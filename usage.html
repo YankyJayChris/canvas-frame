@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CanvasManipulator Usage Demo</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #ecf0f1;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #controls {
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            max-width: 800px;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        button, select, input {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            background-color: #3498db;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover, select:hover {
+            background-color: #2980b9;
+        }
+
+        #exampleNav {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        #canvasContainer {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        #output {
+            margin-top: 20px;
+            width: 800px;
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div id="exampleNav">
+        <button onclick="runExample(1)">Basic Shape Drawing</button>
+        <button onclick="runExample(2)">Animation Example</button>
+        <button onclick="runExample(3)">Timeline Example</button>
+    </div>
+    <div id="controls">
+        <button onclick="startDrawing('rectangle')">Draw Rectangle</button>
+        <button onclick="startDrawing('circle')">Draw Circle</button>
+        <button onclick="startDrawing('line')">Draw Line</button>
+        <button onclick="startDrawing('triangle')">Draw Triangle</button>
+        <button onclick="startDrawing('text')">Add Text</button>
+        <button onclick="addImage()">Add Image</button>
+        <button onclick="addInput()">Add Input</button>
+        <button onclick="addDropdown()">Add Dropdown</button>
+        <button onclick="addFlexContainer()">Add Flex Container</button>
+        <button onclick="groupSelected()">Group Selected</button>
+        <button onclick="nestSelected()">Nest Selected</button>
+        <button onclick="deleteSelected()">Delete Selected</button>
+        <button onclick="undo()">Undo</button>
+        <button onclick="redo()">Redo</button>
+        <button onclick="exportJson()">Export JSON</button>
+        <button onclick="importJson()">Import JSON</button>
+        <select onchange="updateProperty(this.value)">
+            <option value="">Update Property</option>
+            <option value="backgroundColor">Background Color</option>
+            <option value="stroke">Stroke Color</option>
+            <option value="fontSize">Font Size</option>
+        </select>
+        <input type="text" id="propertyValue" placeholder="Value" onkeydown="if(event.key === 'Enter') updateSelectedProperty()">
+    </div>
+    <div id="canvasContainer">
+        <canvas id="myCanvas"></canvas>
+    </div>
+    <pre id="output"></pre>
+
+    <script>
+        // Placeholder for CanvasManipulator class (replace with actual implementation)
+        class CanvasManipulator {
+            constructor(canvasIdOrElement, settings = {}) {
+                this.canvas = typeof canvasIdOrElement === 'string' ? document.getElementById(canvasIdOrElement) : canvasIdOrElement;
+                this.ctx = this.canvas.getContext('2d');
+                this.settings = { width: 800, height: 600, backgroundColor: '#ffffff', showOverlay: true, ...settings };
+                this.canvas.width = this.settings.width;
+                this.canvas.height = this.settings.height;
+                this.shapes = [];
+                this.selectedShapes = [];
+                this.currentShape = null;
+                this.isDrawing = false;
+                this.startX = 0;
+                this.startY = 0;
+
+                this.canvas.addEventListener('mousedown', this.handleMouseDown.bind(this));
+                this.canvas.addEventListener('mousemove', this.handleMouseMove.bind(this));
+                this.canvas.addEventListener('mouseup', this.handleMouseUp.bind(this));
+                this.redraw();
+            }
+
+            // Minimal implementation for demo purposes
+            startDrawing(type) { this.currentShape = type; }
+            redraw() {
+                this.ctx.fillStyle = this.settings.backgroundColor;
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                this.shapes.forEach(shape => this.drawShape(shape));
+            }
+            drawShape(shape) {
+                this.ctx.fillStyle = shape.styles.backgroundColor || '#aabbcc';
+                this.ctx.fillRect(shape.x, shape.y, shape.width, shape.height);
+            }
+            getMousePos(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+            }
+            handleMouseDown(e) {
+                const { x, y } = this.getMousePos(e);
+                this.startX = x;
+                this.startY = y;
+                if (this.currentShape) {
+                    this.isDrawing = true;
+                    this.shapes.push({ id: Date.now().toString(), type: this.currentShape, x, y, width: 0, height: 0, styles: {} });
+                }
+            }
+            handleMouseMove(e) {
+                if (this.isDrawing) {
+                    const { x, y } = this.getMousePos(e);
+                    const shape = this.shapes[this.shapes.length - 1];
+                    shape.width = x - shape.x;
+                    shape.height = y - shape.y;
+                    this.redraw();
+                }
+            }
+            handleMouseUp() {
+                this.isDrawing = false;
+                this.currentShape = null;
+            }
+            updateShapeProperty(id, property, value) {
+                const shape = this.shapes.find(s => s.id === id);
+                if (shape) shape.styles[property] = value;
+                this.redraw();
+            }
+            getElementsAsJson() { return this.shapes; }
+            loadElementsFromJson(json) { this.shapes = json; this.redraw(); }
+            deleteSelected() { this.shapes = this.shapes.filter(s => !this.selectedShapes.includes(s)); this.selectedShapes = []; this.redraw(); }
+            groupElements(ids) { /* Simplified */ }
+            nestElement(parentId, childId) { /* Simplified */ }
+            undo() { /* Simplified */ }
+            redo() { /* Simplified */ }
+            getElementById(id) { return this.shapes.find(s => s.id === id) || null; }
+            exportCanvas(format) { return this.canvas.toDataURL(`image/${format}`); }
+            animateElement(id) { console.log(`Animating ${id}`); }
+            playAnimation(id) { console.log(`Playing animation for ${id}`); }
+            stopAnimation(id) { console.log(`Stopping animation for ${id}`); }
+            getCurrentKeyframe(id) { return null; }
+            createKeyframeTimeline(id) { console.log(`Creating timeline for ${id}`); return this.canvas; }
+            editSelectedKeyframe(id, newFrame) { console.log(`Editing keyframe for ${id}`); }
+        }
+
+        const canvas = document.getElementById('myCanvas');
+        const manipulator = new CanvasManipulator(canvas);
+        let selectedShapeIds = [];
+
+        function logOutput(message) {
+            document.getElementById('output').textContent = message;
+        }
+
+        function startDrawing(type) {
+            manipulator.startDrawing(type);
+            logOutput(`Started drawing ${type}`);
+        }
+
+        function addImage() {
+            const shape = {
+                id: Date.now().toString(),
+                type: 'image',
+                x: 50,
+                y: 50,
+                width: 100,
+                height: 100,
+                styles: { backgroundColor: 'transparent' },
+                children: [],
+                src: 'https://via.placeholder.com/100'
+            };
+            manipulator.loadElementsFromJson([shape]);
+            logOutput('Added image');
+        }
+
+        function addInput() {
+            const shape = {
+                id: Date.now().toString(),
+                type: 'html',
+                x: 50,
+                y: 50,
+                width: 200,
+                height: 40,
+                styles: {},
+                children: [],
+                html: '<input type="text" value="Sample Input" style="width:100%;height:100%;box-sizing:border-box;">'
+            };
+            manipulator.loadElementsFromJson([shape]);
+            logOutput('Added input field');
+        }
+
+        function addDropdown() {
+            const shape = {
+                id: Date.now().toString(),
+                type: 'html',
+                x: 50,
+                y: 100,
+                width: 200,
+                height: 40,
+                styles: {},
+                children: [],
+                html: '<select style="width:100%;height:100%;box-sizing:border-box;"><option>Option 1</option><option>Option 2</option></select>'
+            };
+            manipulator.loadElementsFromJson([shape]);
+            logOutput('Added dropdown');
+        }
+
+        function addFlexContainer() {
+            const shape = {
+                id: Date.now().toString(),
+                type: 'flex',
+                x: 50,
+                y: 150,
+                width: 300,
+                height: 100,
+                styles: { display: 'flex', justifyContent: 'space-around', alignItems: 'center' },
+                children: [
+                    { id: Date.now() + '1', type: 'rectangle', x: 0, y: 0, width: 50, height: 50, styles: { backgroundColor: '#e74c3c' }, children: [] },
+                    { id: Date.now() + '2', type: 'rectangle', x: 0, y: 0, width: 50, height: 50, styles: { backgroundColor: '#2ecc71' }, children: [] }
+                ]
+            };
+            manipulator.loadElementsFromJson([shape]);
+            logOutput('Added flex container with two rectangles');
+        }
+
+        function groupSelected() {
+            if (selectedShapeIds.length > 1) {
+                manipulator.groupElements(selectedShapeIds);
+                selectedShapeIds = [];
+                logOutput('Grouped selected shapes');
+            } else {
+                logOutput('Select at least two shapes to group');
+            }
+        }
+
+        function nestSelected() {
+            if (selectedShapeIds.length === 2) {
+                manipulator.nestElement(selectedShapeIds[0], selectedShapeIds[1]);
+                selectedShapeIds = [];
+                logOutput('Nested second shape into first');
+            } else {
+                logOutput('Select exactly two shapes to nest (parent first, child second)');
+            }
+        }
+
+        function deleteSelected() {
+            manipulator.deleteSelected();
+            selectedShapeIds = [];
+            logOutput('Deleted selected shapes');
+        }
+
+        function undo() {
+            manipulator.undo();
+            logOutput('Undid last action');
+        }
+
+        function redo() {
+            manipulator.redo();
+            logOutput('Redid last action');
+        }
+
+        function exportJson() {
+            const json = manipulator.getElementsAsJson();
+            logOutput(JSON.stringify(json, null, 2));
+        }
+
+        function importJson() {
+            const jsonText = document.getElementById('output').textContent;
+            try {
+                const json = JSON.parse(jsonText);
+                manipulator.loadElementsFromJson(json);
+                logOutput('Imported shapes from JSON');
+            } catch (e) {
+                logOutput('Invalid JSON in output - export first');
+            }
+        }
+
+        function updateProperty(property) {
+            if (property && selectedShapeIds.length > 0) {
+                logOutput(`Selected property ${property} for shape ${selectedShapeIds[0]}. Enter value and press Enter.`);
+            }
+        }
+
+        function updateSelectedProperty() {
+            const property = document.querySelector('select').value;
+            const value = document.getElementById('propertyValue').value;
+            if (property && value && selectedShapeIds.length > 0) {
+                manipulator.updateShapeProperty(selectedShapeIds[0], property, value);
+                logOutput(`Updated ${property} to ${value} for shape ${selectedShapeIds[0]}`);
+            }
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            const { x, y } = manipulator.getMousePos(e);
+            const shape = manipulator.getElementById(manipulator.shapes.find(s => 
+                x >= s.x && x <= s.x + s.width && y >= s.y && y <= s.y + s.height)?.id || '');
+            if (shape) {
+                selectedShapeIds = [shape.id];
+                logOutput(`Selected shape ${shape.id}`);
+            }
+        });
+
+        // Example navigation
+        function runExample(exampleNumber) {
+            manipulator.loadElementsFromJson([]); // Clear canvas
+            selectedShapeIds = [];
+            logOutput(`Running Example ${exampleNumber}`);
+
+            switch (exampleNumber) {
+                case 1: // Basic Shape Drawing
+                    manipulator.startDrawing('rectangle');
+                    manipulator.handleMouseDown({ clientX: 100, clientY: 100 });
+                    manipulator.handleMouseMove({ clientX: 300, clientY: 300 });
+                    manipulator.handleMouseUp();
+                    const shape1 = manipulator.getElementById(manipulator.getElementsAsJson()[0].id);
+                    if (shape1) {
+                        manipulator.updateShapeProperty(shape1.id, 'backgroundColor', '#ff0000');
+                        selectedShapeIds = [shape1.id];
+                    }
+                    logOutput('Drew a red rectangle');
+                    break;
+
+                case 2: // Animation Example
+                    manipulator.startDrawing('rectangle');
+                    manipulator.handleMouseDown({ clientX: 100, clientY: 100 });
+                    manipulator.handleMouseMove({ clientX: 300, clientY: 300 });
+                    manipulator.handleMouseUp();
+                    const shape2 = manipulator.getElementById(manipulator.getElementsAsJson()[0].id);
+                    if (shape2) {
+                        manipulator.updateShapeProperty(shape2.id, 'frames', [
+                            { x: 100, y: 100, rotation: 0, duration: 500 },
+                            { x: 200, y: 200, rotation: 90, duration: 500 }
+                        ]);
+                        manipulator.animateElement(shape2.id);
+                        setTimeout(() => manipulator.stopAnimation(shape2.id), 2000);
+                        selectedShapeIds = [shape2.id];
+                        logOutput('Animated rectangle for 2 seconds');
+                    }
+                    break;
+
+                case 3: // Timeline Example
+                    manipulator.startDrawing('rectangle');
+                    manipulator.handleMouseDown({ clientX: 100, clientY: 100 });
+                    manipulator.handleMouseMove({ clientX: 300, clientY: 300 });
+                    manipulator.handleMouseUp();
+                    const shape3 = manipulator.getElementById(manipulator.getElementsAsJson()[0].id);
+                    if (shape3) {
+                        manipulator.updateShapeProperty(shape3.id, 'frames', [
+                            { x: 100, y: 100, rotation: 0, duration: 500 },
+                            { x: 200, y: 200, rotation: 90, duration: 500 },
+                            { x: 300, y: 100, rotation: 180, duration: 500 }
+                        ]);
+                        manipulator.createKeyframeTimeline(shape3.id);
+                        manipulator.animateElement(shape3.id);
+                        setTimeout(() => {
+                            manipulator.stopAnimation(shape3.id);
+                            const currentFrame = manipulator.getCurrentKeyframe(shape3.id);
+                            logOutput(`Current keyframe: ${JSON.stringify(currentFrame)}`);
+                            manipulator.editSelectedKeyframe(shape3.id, { x: 250, rotation: 45 });
+                            manipulator.playAnimation(shape3.id);
+                        }, 1000);
+                        selectedShapeIds = [shape3.id];
+                        logOutput('Created timeline and edited keyframe after 1 second');
+                    }
+                    break;
+
+                default:
+                    logOutput('Unknown example number');
+            }
+        }
+
+        // Include the full CanvasManipulator code here
+        // Replace the placeholder CanvasManipulator class with the actual implementation from your previous response
+        // For brevity, I've left it as a placeholder above. Copy the full class code here:
+        /*
+        class CanvasManipulator {
+            // Full implementation from previous response
+        }
+        class StateManager {
+            // Full implementation from previous response
+        }
+        */
+    </script>
+</body>
+</html>

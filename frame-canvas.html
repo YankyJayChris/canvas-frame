@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Figma-like App</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar for dragging elements -->
+        <div class="sidebar">
+            <h2>Elements</h2>
+            <div class="element" draggable="true" data-type="rectangle">Rectangle</div>
+            <div class="element" draggable="true" data-type="circle">Circle</div>
+            <div class="element" draggable="true" data-type="line">Line</div>
+            <div class="element" draggable="true" data-type="triangle">Triangle</div>
+            <div class="element" draggable="true" data-type="text">Text</div>
+            <div class="element" draggable="true" data-type="html">Input</div>
+            <div class="element" draggable="true" data-type="flex">Flex Container</div>
+            <div class="element" draggable="true" data-type="grid">Grid Container</div>
+            <div class="element" draggable="true" data-type="scroll">Scroll Container</div>
+        </div>
+
+        <!-- Main canvas area -->
+        <div class="main-content">
+            <div class="toolbar">
+                <button onclick="canvasManipulator.deleteSelected()">Delete</button>
+                <button onclick="canvasManipulator.undo()">Undo</button>
+                <button onclick="canvasManipulator.redo()">Redo</button>
+                <button onclick="canvasManipulator.clearCanvas()">Clear</button>
+                <button onclick="exportCanvas()">Export PNG</button>
+            </div>
+            <canvas id="canvas"></canvas>
+        </div>
+
+        <!-- Animation panel -->
+        <div class="animation-panel">
+            <h2>Animation</h2>
+            <div id="animation-controls">
+                <select id="shape-select"></select>
+                <button onclick="addKeyframe()">Add Keyframe</button>
+                <button onclick="playAnimation()">Play</button>
+                <button onclick="pauseAnimation()">Pause</button>
+                <button onclick="stopAnimation()">Stop</button>
+                <input type="number" id="fps" placeholder="FPS" min="1" value="30">
+                <button onclick="setFPS()">Set FPS</button>
+            </div>
+            <div id="timeline-container"></div>
+        </div>
+    </div>
+
+    <script src="canvas-manipulator.js"></script>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const canvasManipulator = new CanvasManipulator(canvas, {
+            width: 800,
+            height: 600,
+            backgroundColor: '#f5f5f5',
+            showOverlay: true
+        });
+
+        // Rest of your script remains the same
+        document.querySelectorAll('.element').forEach(element => {
+            element.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('type', e.target.dataset.type);
+            });
+        });
+
+        function updateShapeSelect() {
+            const select = document.getElementById('shape-select');
+            select.innerHTML = '';
+            canvasManipulator.getElementsAsJson().forEach(shape => {
+                const option = document.createElement('option');
+                option.value = shape.id;
+                option.textContent = `${shape.type} (${shape.id})`;
+                select.appendChild(option);
+            });
+        }
+
+        function addKeyframe() {
+            const select = document.getElementById('shape-select');
+            const shapeId = select.value;
+            if (!shapeId) return;
+
+            const shape = canvasManipulator.getElementById(shapeId);
+            if (!shape.frames) shape.frames = [];
+            shape.frames.push({
+                x: shape.x,
+                y: shape.y,
+                rotation: canvasManipulator.getRotationAngle(shape),
+                duration: 1000
+            });
+            canvasManipulator.updateShapeProperty(shapeId, 'frames', shape.frames);
+            canvasManipulator.createKeyframeTimeline(shapeId);
+            updateShapeSelect();
+        }
+
+        function playAnimation() {
+            const select = document.getElementById('shape-select');
+            canvasManipulator.animateElement(select.value);
+        }
+
+        function pauseAnimation() {
+            const select = document.getElementById('shape-select');
+            canvasManipulator.pauseAnimation(select.value);
+        }
+
+        function stopAnimation() {
+            const select = document.getElementById('shape-select');
+            canvasManipulator.stopAnimation(select.value);
+        }
+
+        function setFPS() {
+            const select = document.getElementById('shape-select');
+            const fps = parseInt(document.getElementById('fps').value);
+            canvasManipulator.setKeyframesPerSecond(select.value, fps);
+        }
+
+        function exportCanvas() {
+            const dataUrl = canvasManipulator.exportCanvas('png');
+            const link = document.createElement('a');
+            link.download = 'canvas.png';
+            link.href = dataUrl;
+            link.click();
+        }
+
+        updateShapeSelect();
+        canvasManipulator.redraw();
+    </script>
+</body>
+
+</html>

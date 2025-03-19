@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CanvasManipulator Documentation</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --background-color: #ecf0f1;
+            --text-color: #333;
+            --code-bg: #f5f5f5;
+            --sidebar-width: 250px;
+            --button-bg: #3498db;
+            --button-hover: #2980b9;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--background-color);
+        }
+
+        .container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: var(--sidebar-width);
+            background-color: var(--primary-color);
+            color: white;
+            padding: 20px;
+            position: fixed;
+            height: 100%;
+            overflow-y: auto;
+        }
+
+        .sidebar h1 {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+        }
+
+        .sidebar ul {
+            list-style: none;
+        }
+
+        .sidebar li {
+            margin: 10px 0;
+        }
+
+        .sidebar a {
+            color: white;
+            text-decoration: none;
+            transition: color 0.3s;
+            cursor: pointer;
+        }
+
+        .sidebar a:hover {
+            color: var(--secondary-color);
+        }
+
+        .content {
+            margin-left: var(--sidebar-width);
+            padding: 40px;
+            max-width: 900px;
+            flex-grow: 1;
+        }
+
+        .content section {
+            display: none; /* Hide all sections by default */
+        }
+
+        .content section.active {
+            display: block; /* Show active section */
+        }
+
+        .content h2 {
+            color: var(--primary-color);
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--secondary-color);
+            padding-bottom: 5px;
+        }
+
+        .content h3 {
+            color: var(--secondary-color);
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+
+        .content p {
+            margin-bottom: 15px;
+        }
+
+        .content pre {
+            background-color: var(--code-bg);
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin-bottom: 20px;
+        }
+
+        .content code {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: var(--code-bg);
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+
+        .api-item {
+            margin-bottom: 30px;
+        }
+
+        .api-item h4 {
+            color: var(--primary-color);
+            margin-bottom: 5px;
+        }
+
+        .api-item p {
+            margin-left: 20px;
+        }
+
+        .example {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .navigation {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .navigation button {
+            padding: 10px 20px;
+            background-color: var(--button-bg);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .navigation button:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+
+        .navigation button:hover:not(:disabled) {
+            background-color: var(--button-hover);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav class="sidebar">
+            <h1>CanvasManipulator</h1>
+            <ul>
+                <li><a data-section="introduction">Introduction</a></li>
+                <li><a data-section="installation">Installation</a></li>
+                <li><a data-section="usage">Usage</a></li>
+                <li><a data-section="api">API Reference</a></li>
+                <li><a data-section="examples">Examples</a></li>
+                <li><a href="./frame-canvas.html">Frame-canvas</a></li>
+                <li><a href="./usage.html">Usage</a></li>
+            </ul>
+        </nav>
+        <main class="content">
+            <section id="introduction">
+                <h2>Introduction</h2>
+                <p>
+                    <code>CanvasManipulator</code> is a versatile JavaScript/TypeScript class designed for creating and manipulating 2D shapes on an HTML canvas. It supports drawing, dragging, resizing, rotating, grouping, and nesting shapes, with additional features like undo/redo, JSON export/import, and DOM element integration.
+                </p>
+                <div class="navigation">
+                    <button id="prevBtn">Previous</button>
+                    <button id="nextBtn">Next</button>
+                </div>
+            </section>
+
+            <section id="installation">
+                <h2>Installation</h2>
+                <p>Include the script in your project:</p>
+                <pre><code><script src="canvas-manipulator.js"></script></code></pre>
+                <p>Or import it as a module:</p>
+                <pre><code>import CanvasManipulator from './canvas-manipulator.js';</code></pre>
+                <div class="navigation">
+                    <button id="prevBtn">Previous</button>
+                    <button id="nextBtn">Next</button>
+                </div>
+            </section>
+
+            <section id="usage">
+                <h2>Usage</h2>
+                <p>Create an instance with an existing canvas or an ID:</p>
+                <pre><code>const manipulator = new CanvasManipulator('myCanvas', { disableZoom: true });</code></pre>
+                <p>Start drawing shapes:</p>
+                <pre><code>manipulator.startDrawing('rectangle');</code></pre>
+                <p>Export and import shapes as JSON:</p>
+                <pre><code>const json = manipulator.getElementsAsJson();
+manipulator.loadElementsFromJson(json);</code></pre>
+                <div class="navigation">
+                    <button id="prevBtn">Previous</button>
+                    <button id="nextBtn">Next</button>
+                </div>
+            </section>
+
+            <section id="api">
+                <h2>API Reference</h2>
+                <div class="api-item">
+                    <h4>constructor(canvasIdOrElement: string | HTMLCanvasElement, settings: CanvasSettings)</h4>
+                    <p>Creates a new CanvasManipulator instance.</p>
+                    <p><strong>Parameters:</strong></p>
+                    <ul>
+                        <li><code>canvasIdOrElement</code>: Canvas ID or HTMLCanvasElement</li>
+                        <li><code>settings</code>: Optional settings (width, height, backgroundColor, showOverlay, disableZoom)</li>
+                    </ul>
+                </div>
+                <div class="api-item">
+                    <h4>getCanvas(): HTMLCanvasElement</h4>
+                    <p>Returns the canvas element.</p>
+                </div>
+                <div class="api-item">
+                    <h4>setOverlay(show: boolean): void</h4>
+                    <p>Sets whether to show the selection overlay.</p>
+                </div>
+                <div class="api-item">
+                    <h4>startDrawing(type: string): void</h4>
+                    <p>Starts drawing a new shape (e.g., "rectangle", "circle").</p>
+                </div>
+                <div class="api-item">
+                    <h4>deleteSelected(): void</h4>
+                    <p>Deletes all selected shapes.</p>
+                </div>
+                <div class="api-item">
+                    <h4>nestElement(parentId: string, childId: string): void</h4>
+                    <p>Nests a child shape inside a parent shape.</p>
+                </div>
+                <div class="api-item">
+                    <h4>groupElements(elementIds: string[]): void</h4>
+                    <p>Groups multiple shapes into a single group shape.</p>
+                </div>
+                <div class="api-item">
+                    <h4>undo(): void</h4>
+                    <p>Undoes the last action.</p>
+                </div>
+                <div class="api-item">
+                    <h4>redo(): void</h4>
+                    <p>Redoes the last undone action.</p>
+                </div>
+                <div class="api-item">
+                    <h4>updateShapeProperty(id: string, property: string, value: any): void</h4>
+                    <p>Updates a shape's style property.</p>
+                </div>
+                <div class="api-item">
+                    <h4>updateSettings(settings: CanvasSettings): void</h4>
+                    <p>Updates canvas settings.</p>
+                </div>
+                <div class="api-item">
+                    <h4>getElementsAsJson(): Shape[]</h4>
+                    <p>Returns all elements as a nested JSON object.</p>
+                </div>
+                <div class="api-item">
+                    <h4>loadElementsFromJson(jsonData: any): void</h4>
+                    <p>Loads and renders elements from JSON or object data.</p>
+                    <p><strong>Throws:</strong> Error if data is invalid.</p>
+                </div>
+                <div class="navigation">
+                    <button id="prevBtn">Previous</button>
+                    <button id="nextBtn">Next</button>
+                </div>
+            </section>
+
+            <section id="examples">
+                <h2>Examples</h2>
+                <div class="example">
+                    <h3>Basic Drawing</h3>
+                    <pre><code>const manipulator = new CanvasManipulator('canvas', { disableZoom: true });
+manipulator.startDrawing('rectangle');
+// Simulate mouse events
+manipulator.handleMouseDown({ clientX: 100, clientY: 100 });
+manipulator.handleMouseMove({ clientX: 200, clientY: 200 });
+manipulator.handleMouseUp();</code></pre>
+                </div>
+                <div class="example">
+                    <h3>Grouping Shapes</h3>
+                    <pre><code>manipulator.startDrawing('circle');
+manipulator.handleMouseDown({ clientX: 300, clientY: 300 });
+manipulator.handleMouseMove({ clientX: 400, clientY: 400 });
+manipulator.handleMouseUp();
+const shapes = manipulator.getElementsAsJson();
+manipulator.groupElements([shapes[0].id, shapes[1].id]);</code></pre>
+                </div>
+                <div class="example">
+                    <h3>Export and Import</h3>
+                    <pre><code>const json = manipulator.getElementsAsJson();
+console.log(JSON.stringify(json, null, 2));
+manipulator.loadElementsFromJson(json);</code></pre>
+                </div>
+                <div class="example">
+                    <h3>Undo/Redo</h3>
+                    <pre><code>manipulator.getCanvas().focus();
+manipulator.undo();
+manipulator.redo();</code></pre>
+                </div>
+                <div class="navigation">
+                    <button id="prevBtn">Previous</button>
+                    <button id="nextBtn">Next</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        // Get all sections and sidebar links
+        const sections = document.querySelectorAll('.content section');
+        const sidebarLinks = document.querySelectorAll('.sidebar a');
+        let currentSectionIndex = 0;
+
+        // Function to update section visibility
+        function updateSection() {
+            sections.forEach((section, index) => {
+                section.classList.toggle('active', index === currentSectionIndex);
+            });
+
+            // Update button states
+            const prevButtons = document.querySelectorAll('#prevBtn');
+            const nextButtons = document.querySelectorAll('#nextBtn');
+            prevButtons.forEach(btn => btn.disabled = currentSectionIndex === 0);
+            nextButtons.forEach(btn => btn.disabled = currentSectionIndex === sections.length - 1);
+        }
+
+        // Initial setup: show first section
+        updateSection();
+
+        // Sidebar navigation
+        sidebarLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                const sectionId = link.getAttribute('data-section');
+                currentSectionIndex = Array.from(sections).findIndex(section => section.id === sectionId);
+                updateSection();
+            });
+        });
+
+        // Previous button event listeners
+        document.querySelectorAll('#prevBtn').forEach(button => {
+            button.addEventListener('click', () => {
+                if (currentSectionIndex > 0) {
+                    currentSectionIndex--;
+                    updateSection();
+                }
+            });
+        });
+
+        // Next button event listeners
+        document.querySelectorAll('#nextBtn').forEach(button => {
+            button.addEventListener('click', () => {
+                if (currentSectionIndex < sections.length - 1) {
+                    currentSectionIndex++;
+                    updateSection();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
