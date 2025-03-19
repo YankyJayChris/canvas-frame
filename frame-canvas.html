@@ -5,7 +5,58 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Figma-like App</title>
-    <link rel="stylesheet" href="styles.css">
+    <style>
+        .app-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .sidebar {
+            width: 200px;
+            background: #f0f0f0;
+            padding: 10px;
+            overflow-y: auto;
+        }
+
+        .element {
+            padding: 10px;
+            margin: 5px 0;
+            background: #ddd;
+            cursor: move;
+            user-select: none;
+        }
+
+        .main-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .toolbar {
+            padding: 10px;
+            background: #e0e0e0;
+        }
+
+        .animation-panel {
+            width: 300px;
+            background: #f0f0f0;
+            padding: 10px;
+            overflow-y: auto;
+        }
+
+        #canvas {
+            border: 1px solid #ccc;
+        }
+
+        .settings-panel {
+            margin-top: 20px;
+        }
+
+        .settings-panel label {
+            display: block;
+            margin: 5px 0;
+        }
+    </style>
 </head>
 
 <body>
@@ -18,10 +69,16 @@
             <div class="element" draggable="true" data-type="line">Line</div>
             <div class="element" draggable="true" data-type="triangle">Triangle</div>
             <div class="element" draggable="true" data-type="text">Text</div>
-            <div class="element" draggable="true" data-type="html">Input</div>
-            <div class="element" draggable="true" data-type="flex">Flex Container</div>
-            <div class="element" draggable="true" data-type="grid">Grid Container</div>
-            <div class="element" draggable="true" data-type="scroll">Scroll Container</div>
+            <div class="element" draggable="true" data-type="input">Input</div>
+            <div class="element" draggable="true" data-type="checkbox">Checkbox</div>
+            <div class="element" draggable="true" data-type="selector">Selector</div>
+            <div class="element" draggable="true" data-type="div">Div</div>
+            <div class="element" draggable="true" data-type="table">Table</div>
+            <div class="element" draggable="true" data-type="button">Button</div>
+            <div class="element" draggable="true" data-type="icon">Icon</div>
+            <div class="element" draggable="true" data-type="image">Image</div>
+            <div class="element" draggable="true" data-type="video">Video</div>
+            <div class="element" draggable="true" data-type="scroll">Scroll</div>
         </div>
 
         <!-- Main canvas area -->
@@ -36,7 +93,7 @@
             <canvas id="canvas"></canvas>
         </div>
 
-        <!-- Animation panel -->
+        <!-- Animation and Settings panel -->
         <div class="animation-panel">
             <h2>Animation</h2>
             <div id="animation-controls">
@@ -49,6 +106,42 @@
                 <button onclick="setFPS()">Set FPS</button>
             </div>
             <div id="timeline-container"></div>
+
+            <!-- Settings panel for selected element -->
+            <div class="settings-panel">
+                <h2>Settings</h2>
+                <label>X: <input type="number" id="setting-x"
+                        onchange="updateSelectedProperty('x', this.value)"></label>
+                <label>Y: <input type="number" id="setting-y"
+                        onchange="updateSelectedProperty('y', this.value)"></label>
+                <label>Width: <input type="text" id="setting-width"
+                        onchange="updateSelectedProperty('width', this.value)"></label>
+                <label>Height: <input type="text" id="setting-height"
+                        onchange="updateSelectedProperty('height', this.value)"></label>
+                <label>Background Color: <input type="color" id="setting-bg"
+                        onchange="updateSelectedProperty('backgroundColor', this.value)"></label>
+                <label>Border Color: <input type="color" id="setting-border"
+                        onchange="updateSelectedProperty('borderColor', this.value)"></label>
+                <label>Opacity: <input type="range" id="setting-opacity" min="0" max="1" step="0.1"
+                        onchange="updateSelectedProperty('opacity', this.value)"></label>
+                <label>Flex Direction: <select id="setting-flex"
+                        onchange="updateSelectedProperty('flexDirection', this.value)">
+                        <option value="row">Row</option>
+                        <option value="column">Column</option>
+                    </select></label>
+                <label>Text: <input type="text" id="setting-text"
+                        onchange="updateSelectedProperty('text', this.value)"></label>
+                <label>Checked: <input type="checkbox" id="setting-checked"
+                        onchange="updateSelectedProperty('checked', this.checked)"></label>
+                <label>Selected Option: <input type="text" id="setting-option"
+                        onchange="updateSelectedProperty('selectedOption', this.value)"></label>
+                <label>Scroll Direction: <select id="setting-scroll"
+                        onchange="updateSelectedProperty('scrollDirection', this.value)">
+                        <option value="row">Row</option>
+                        <option value="column">Column</option>
+                    </select></label>
+                <button onclick="demoNestElement()">Nest Demo Element</button>
+            </div>
         </div>
     </div>
 
@@ -62,13 +155,14 @@
             showOverlay: true
         });
 
-        // Rest of your script remains the same
+        // Drag and drop setup
         document.querySelectorAll('.element').forEach(element => {
             element.addEventListener('dragstart', (e) => {
                 e.dataTransfer.setData('type', e.target.dataset.type);
             });
         });
 
+        // Update shape selection dropdown
         function updateShapeSelect() {
             const select = document.getElementById('shape-select');
             select.innerHTML = '';
@@ -78,8 +172,10 @@
                 option.textContent = `${shape.type} (${shape.id})`;
                 select.appendChild(option);
             });
+            updateSettingsPanel();
         }
 
+        // Animation functions
         function addKeyframe() {
             const select = document.getElementById('shape-select');
             const shapeId = select.value;
@@ -94,7 +190,6 @@
                 duration: 1000
             });
             canvasManipulator.updateShapeProperty(shapeId, 'frames', shape.frames);
-            canvasManipulator.createKeyframeTimeline(shapeId);
             updateShapeSelect();
         }
 
@@ -116,7 +211,13 @@
         function setFPS() {
             const select = document.getElementById('shape-select');
             const fps = parseInt(document.getElementById('fps').value);
-            canvasManipulator.setKeyframesPerSecond(select.value, fps);
+            const shape = canvasManipulator.getElementById(select.value);
+            if (shape && shape.frames) {
+                shape.frames.forEach(frame => {
+                    frame.duration = 1000 / fps;
+                });
+                canvasManipulator.updateShapeProperty(select.value, 'frames', shape.frames);
+            }
         }
 
         function exportCanvas() {
@@ -127,8 +228,65 @@
             link.click();
         }
 
-        updateShapeSelect();
+        // Update settings panel based on selected shape
+        function updateSettingsPanel() {
+            const selectedShape = canvasManipulator.selectedShapes[0];
+            if (!selectedShape) return;
+
+            document.getElementById('setting-x').value = selectedShape.x || 0;
+            document.getElementById('setting-y').value = selectedShape.y || 0;
+            document.getElementById('setting-width').value = selectedShape.width || '';
+            document.getElementById('setting-height').value = selectedShape.height || '';
+            document.getElementById('setting-bg').value = selectedShape.styles.backgroundColor || '#aabbcc';
+            document.getElementById('setting-border').value = selectedShape.styles.borderColor || '#000000';
+            document.getElementById('setting-opacity').value = selectedShape.styles.opacity || 1;
+            document.getElementById('setting-flex').value = selectedShape.styles.flexDirection || 'row';
+            document.getElementById('setting-text').value = selectedShape.text || '';
+            document.getElementById('setting-checked').checked = selectedShape.checked || false;
+            document.getElementById('setting-option').value = selectedShape.selectedOption || '';
+            document.getElementById('setting-scroll').value = selectedShape.scrollDirection || 'column';
+        }
+
+        // Update selected shape property
+        function updateSelectedProperty(property, value) {
+            const selectedShape = canvasManipulator.selectedShapes[0];
+            if (selectedShape) {
+                if (['x', 'y'].includes(property)) {
+                    canvasManipulator.updateShapeProperty(selectedShape.id, property, parseFloat(value));
+                } else if (['width', 'height'].includes(property)) {
+                    canvasManipulator.updateShapeProperty(selectedShape.id, property, value);
+                } else if (['backgroundColor', 'borderColor', 'opacity', 'flexDirection'].includes(property)) {
+                    canvasManipulator.updateShapeProperty(selectedShape.id, property, value);
+                } else {
+                    canvasManipulator.updateShapeProperty(selectedShape.id, property, value);
+                }
+                canvasManipulator.redraw();
+            }
+        }
+
+        // Demo nesting function
+        async function demoNestElement() {
+            const selectedShape = canvasManipulator.selectedShapes[0];
+            if (!selectedShape) {
+                alert('Please select a shape first!');
+                return;
+            }
+
+            // Create a demo button as a child
+            const childShape = await canvasManipulator.createSpecialShape('button', 10, 10);
+            canvasManipulator.addShape(childShape);
+            canvasManipulator.nestElement(selectedShape.id, childShape.id);
+            updateShapeSelect();
+        }
+
+        // Initial setup
         canvasManipulator.redraw();
+        updateShapeSelect();
+
+        // Update settings panel when selection changes
+        canvas.addEventListener('mousedown', () => {
+            setTimeout(updateSettingsPanel, 0); // Ensure selection updates first
+        });
     </script>
 </body>
 

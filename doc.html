@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CanvasManipulator Documentation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+            max-width: 800px;
+        }
+
+        h1,
+        h2,
+        h3 {
+            color: #333;
+        }
+
+        pre {
+            background: #f4f4f4;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+
+        ul,
+        ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+
+        a {
+            color: #0066cc;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>CanvasManipulator Documentation</h1>
+    <p><code>CanvasManipulator</code> is a TypeScript class designed to create and manipulate a 2D canvas-based drawing
+        and design tool, similar to Figma. It supports a variety of shapes, animations, components, and advanced
+        styling, with features like drag-and-drop, undo/redo, and state persistence.</p>
+
+    <h2>Table of Contents</h2>
+    <ol>
+        <li><a href="#overview">Overview</a></li>
+        <li><a href="#installation">Installation</a></li>
+        <li><a href="#usage">Usage</a></li>
+        <li><a href="#features">Features</a></li>
+        <li><a href="#api-reference">API Reference</a></li>
+        <li><a href="#example">Example</a></li>
+    </ol>
+
+    <h2 id="overview">Overview</h2>
+    <p><code>CanvasManipulator</code> provides a robust framework for creating interactive canvas applications. It
+        supports:</p>
+    <ul>
+        <li>Drawing and editing shapes (rectangle, circle, line, triangle, text, etc.).</li>
+        <li>Advanced CSS-like styling with properties like <code>backgroundColor</code>, <code>border</code>,
+            <code>opacity</code>, etc.</li>
+        <li>Animation with keyframes and timeline control.</li>
+        <li>Grouping and nesting of elements.</li>
+        <li>Copy-paste functionality with keyboard shortcuts.</li>
+        <li>Reusable components.</li>
+        <li>Saving and importing canvas state as JSON.</li>
+    </ul>
+    <p>The class is designed to work with an HTML canvas element and integrates with a UI for dragging elements, editing
+        styles, and controlling animations.</p>
+
+    <h2 id="installation">Installation</h2>
+    <h3>1. Include the Script</h3>
+    <ul>
+        <li>Save the <code>CanvasManipulator</code> TypeScript code as <code>canvas-manipulator.ts</code>.</li>
+        <li>Compile it to JavaScript using <code>tsc canvas-manipulator.ts</code> (requires TypeScript installed).</li>
+        <li>Include the resulting <code>canvas-manipulator.js</code> in your HTML:
+            <pre><code>&lt;script src="canvas-manipulator.js"&gt;&lt;/script&gt;</code></pre>
+        </li>
+    </ul>
+
+    <h3>2. HTML Setup</h3>
+    <ul>
+        <li>Create a canvas element and a basic UI (see the <a href="#example">Example</a> section).</li>
+    </ul>
+
+    <h3>3. Dependencies</h3>
+    <ul>
+        <li>No external libraries are required; it uses the native Canvas API.</li>
+    </ul>
+
+    <h2 id="usage">Usage</h2>
+    <p>Instantiate <code>CanvasManipulator</code> with a canvas element or ID and optional settings:</p>
+    <pre><code>const canvas = document.getElementById('canvas');
+const canvasManipulator = new CanvasManipulator(canvas, {
+    width: 800,
+    height: 600,
+    backgroundColor: '#f5f5f5',
+    showOverlay: true
+});
+</code></pre>
+    <p>Use methods to interact with the canvas:</p>
+    <pre><code>canvasManipulator.startDrawing('rectangle');
+canvasManipulator.copySelected(); // Ctrl+C
+canvasManipulator.pasteClipboard(); // Ctrl+V
+canvasManipulator.saveToJsonFile('canvas.json');
+</code></pre>
+
+    <h2 id="features">Features</h2>
+    <ul>
+        <li><strong>Shapes</strong>: Rectangle, Circle, Line, Triangle, Text, Selector, Div, Table, Button, Checkbox.
+        </li>
+        <li><strong>Styling</strong>: Advanced CSS-like properties (e.g., <code>border</code>,
+            <code>backgroundColor</code>, <code>transform</code>).</li>
+        <li><strong>Interactivity</strong>: Drag, resize, rotate, and select shapes with overlay handles.</li>
+        <li><strong>Animation</strong>: Keyframe-based animations with play/pause/stop controls and timeline.</li>
+        <li><strong>Undo/Redo</strong>: History management for actions.</li>
+        <li><strong>Copy-Paste</strong>: Keyboard shortcuts (Ctrl+C, Ctrl+V) for duplicating shapes.</li>
+        <li><strong>Components</strong>: Create and reuse groups of shapes.</li>
+        <li><strong>State Management</strong>: Save and import canvas state as JSON.</li>
+        <li><strong>Drag-and-Drop</strong>: Add shapes from a sidebar to the canvas.</li>
+    </ul>
+
+    <h2 id="api-reference">API Reference</h2>
+
+    <h3>Constructor</h3>
+    <h4><code>new CanvasManipulator(canvasIdOrElement: string | HTMLCanvasElement, settings: CanvasSettings = {})</code>
+    </h4>
+    <ul>
+        <li><strong>Description</strong>: Initializes a new <code>CanvasManipulator</code> instance.</li>
+        <li><strong>Parameters</strong>:
+            <ul>
+                <li><code>canvasIdOrElement</code>: The ID of an existing canvas element or the
+                    <code>HTMLCanvasElement</code> itself.</li>
+                <li><code>settings</code> (optional): An object with canvas settings.
+                    <ul>
+                        <li><code>width?: number</code> - Canvas width (default: 800).</li>
+                        <li><code>height?: number</code> - Canvas height (default: 600).</li>
+                        <li><code>backgroundColor?: string</code> - Canvas background color (default: '#ffffff').</li>
+                        <li><code>showOverlay?: boolean</code> - Show selection handles (default: false).</li>
+                        <li><code>disableZoom?: boolean</code> - Disable zoom via mouse wheel (default: false).</li>
+                    </ul>
+                </li>
+            </ul>
+        </li>
+        <li><strong>Example</strong>:
+            <pre><code>const cm = new CanvasManipulator('canvas', { width: 1000, height: 800 });</code></pre>
+        </li>
+    </ul>
+
+    <h3>Core Methods</h3>
+    <h4><code>getCanvas(): HTMLCanvasElement</code></h4>
+    <ul>
+        <li><strong>Description</strong>: Returns the underlying canvas element.</li>
+        <li><strong>Returns</strong>: <code>HTMLCanvasElement</code>.</li>
+    </ul>
+
+    <h4><code>getElementById(id: string): Shape | null</code></h4>
+    <ul>
+        <li><strong>Description</strong>: Retrieves a shape by its ID, including nested shapes.</li>
+        <li><strong>Parameters</strong>: <code>id</code> - The unique ID of the shape.</li>
+        <li><strong>Returns</strong>: <code>Shape</code> object or <code>null</code> if not found.</li>
+    </ul>
+
+    <h4><code>exportCanvas(format: 'png' | 'jpg', quality: number = 0.92): string</code></h4>
+    <ul>
+        <li><strong>Description</strong>: Exports the canvas as an image.</li>
+        <li><strong>Parameters</strong>:
+            <ul>
+                <li><code>format</code>: Image format ('png' or 'jpg').</li>
+                <li><code>quality</code>: Quality for lossy formats (0 to 1, default: 0.92).</li>
+            </ul>
+        </li>
+        <li><strong>Returns</strong>: Data URL of the exported image.</li>
+    </ul>
+
+    <h4><code>redraw(): void</code></h4>
+    <ul>
+        <li><strong>Description</strong>: Redraws the entire canvas with current shapes and settings.</li>
+    </ul>
+
+    <h4><code>clearCanvas(): void</code></h4>
+    <ul>
+        <li><strong>Description</strong>: Removes all shapes, animations, and timelines from the canvas.</li>
+    </ul>
+
+    <h3>Drawing and Editing</h3>
+    <h4><code>startDrawing(type: string): void</code></h4>
+    <ul>
+        <li><strong>Description</strong>: Begins drawing a new shape of the specified type.</li>
+        <li><strong>Parameters</strong>: <code>type</code> - Shape type (e.g., 'rectangle', 'circle', 'text').</li>
+        <li><strong>Supported Types</strong>: 'rectangle', 'circle', 'line', 'triangle', 'text', 'selector', 'div',
+            'table', 'button', 'checkbox'.</li>
+    </ul>
+
+    <h4><code>deleteSelected(): void</code></h4>
+    <ul>
+        <li><strong>Description</strong>: Deletes all currently selected shapes.</li>
+    </ul>
+
+    <h4><code>updateShapeProperty(id: string, property: string, value: any): void</code></h4>
+    <ul>
+        <li><strong>Description</strong>: Updates a specific property of a shape.</li>
+        <li><strong>Parameters</strong>:
+            <ul>
+                <li><code>id</code>: Shape ID.</li>
+                <li><code>property</code>: Property name (e.g., 'backgroundColor', 'frames').</li>
+                <li><code>value</code>: New value (type depends on property).</li>
+            </ul>
+        </li>
+        <li><strong>Examples</strong>:
+            <pre><code>cm.updateShapeProperty('shape1', 'backgroundColor', '#ff0000');
+cm.updateShapeProperty('shape1', 'text', 'New Text');
+</code></pre>
+        </li>
+    </ul>
+
+    <h4><code>addShape(shape: Shape): void</code></h4>
+    <ul>
+        <li><strong>Description</strong>: Adds a pre-created shape to the canvas (recommended for external use).</li>
+        <li><strong>Parameters</strong>: <code>shape</code> - A <code>Shape</code> object.</li>
+        <li><strong>Note</strong>: Ensure the shape has a unique <code>id</code>.</li>
+    </ul>
+
+    <h3>Selection and Clipboard</h3>
+    <h4><code>copySelected(): void</code></h4>
+    <ul>
+        <li><strong>Description</strong>: Copies selected shapes to the clipboard (Ctrl+C).</li>
+        <li><strong>Shortcut</strong>: Ctrl+C (or Cmd+C on Mac).</li>
+    </ul>
+
+    <h4><code>pasteClipboard(): void</code></h4>
+    <ul>
+        <li><strong>Description</strong>: Pastes shapes from the clipboard with a 20px offset (Ctrl+V).</li>
+        <li><strong>Shortcut</strong>: Ctrl+V (or Cmd+V on Mac).</li>
+    </ul>
+
+    <h3>Grouping and Nesting</h3>
+    <h4><code>nestElement(parentId: string, childId: string): void</code></h4>
+    <ul>
+        <li><strong>Description</strong>: Nests a child shape inside a parent shape, adjusting coordinates.</li>
+        <li><strong>Parameters</strong>:
+            <ul>
+                <li><code>parentId</code>: ID of the parent shape.</li>
+                <li><code>childId</code>: ID of the child shape.</li>
+            </ul>
+        </li>
+    </ul>
+
+    <h4><code>groupElements(elementIds: string[]): void</code></h4>
+    <ul>
+        <li><strong>Description</strong>: Groups multiple shapes into a single 'group' shape.</li>
+        <li><strong>Parameters</strong>: <code>elementIds</code> - Array of shape IDs to group.</li>
+    </ul>
+
+    <h4><code>centerChildrenInParent(parentId: string): void</code></h4>
+    <ul>
+        <li><strong>Description</strong>: Centers all children within a parent shape.</li>
+        <li><strong>Parameters</strong>: <code>parentId</code> - ID of the parent shape.</li>
+    </ul>
+
+    <h3>Animation</h3>
+    <h4><code>animateElement(id: string): void</code></h4>
+    <ul>
+        <li><strong>Description</strong>: Starts animation for a shape from the beginning using its keyframes.</li>
+        <li><strong>Parameters</strong>: <code>id</code> - Shape ID.</li>
+    </ul>
+
+    <h4><code>playAnimation(id: string): void</code></h4>
+    <ul>
+        <li><strong>Description</strong>: Plays animation from the current frame.</li>
+        <li><strong>Parameters</strong>: <code>id</code> - Shape ID.</li>
+    </ul>
+
+    <h4><code>pauseAnimation(id: string): void</code></h4>
+    <ul>
+        <li><strong>Description</strong>: Pauses animation for a shape.</li>
+        <li><strong>Parameters</strong>: <code>id</code> - Shape ID.</li>
+    </ul>
+
+    <h4><code>stopAnimation(id: string): void</code></h4>
+    <ul>
+        <li><strong>Description</strong>: Stops animation and resets to the initial state.</li>
+        <li><strong>Parameters</strong>: <code>id</code> - Shape ID.</li>
+    </ul>
+
+    <h4><code>setKeyframesPerSecond(id: string, fps: number): void</code></h4>
+    <ul>
+        <li><strong>Description</strong>: Sets the animation speed in frames per second.</li>
+        <li><strong>Parameters</strong>:
+            <ul>
+                <li><code>id</code>: Shape ID.</li>
+                <li><code>fps</code>: Frames per second (positive number).</li>
+            </ul>
+        </li>
+    </ul>
+
+    <h4><code>createKeyframeTimeline(shapeId: string, width: number = 400, height: number = 50): HTMLCanvasElement</code>
+    </h4>
+    <ul>
+        <li><strong>Description</strong>: Creates an interactive timeline for a shape's keyframes.</li>
+        <li><strong>Parameters</strong>:
+            <ul>
+                <li><code>shapeId</code>: Shape ID.</li>
+                <li><code>width</code>: Timeline width (default: 400).</li>
+                <li><code>height</code>: Timeline height (default: 50).</li>
+            </ul>
+        </li>
+        <li><strong>Returns</strong>: The timeline canvas element.</li>
+    </ul>
+
+    <h4><code>editSelectedKeyframe(shapeId: string, newFrame: { x?: number; y?: number; rotation?: number; duration?: number }): void</code>
+    </h4>
+    <ul>
+        <li><strong>Description</strong>: Edits the currently selected keyframe of a shape.</li>
+        <li><strong>Parameters</strong>:
+            <ul>
+                <li><code>shapeId</code>: Shape ID.</li>
+                <li><code>newFrame</code>: Partial frame data to update.</li>
+            </ul>
+        </li>
+    </ul>
+
+    <h4><code>getCurrentKeyframe(id: string): { x: number; y: number; rotation: number; duration: number } | null</code>
+    </h4>
+    <ul>
+        <li><strong>Description</strong>: Gets the current keyframe for a shape.</li>
+        <li><strong>Parameters</strong>: <code>id</code> - Shape ID.</li>
+        <li><strong>Returns</strong>: Current keyframe or <code>null</code>.</li>
+    </ul>
+
+    <h4><code>getTotalAnimationDuration(id: string): number</code></h4>
+    <ul>
+        <li><strong>Description</strong>: Calculates total animation duration in milliseconds.</li>
+        <li><strong>Parameters</strong>: <code>id</code> - Shape ID.</li>
+        <li><strong>Returns</strong>: Total duration.</li>
+    </ul>
+
+    <h3>Components</h3>
+    <h4><code>createComponent(name: string): void</code></h4>
+    <ul>
+        <li><strong>Description</strong>: Creates a reusable component from selected shapes.</li>
+        <li><strong>Parameters</strong>: <code>name</code> - Component name.</li>
+    </ul>
+
+    <h4><code>insertComponent(componentName: string, x: number, y: number): void</code></h4>
+    <ul>
+        <li><strong>Description</strong>: Inserts a component at the specified position.</li>
+        <li><strong>Parameters</strong>:
+            <ul>
+                <li><code>componentName</code>: Name of the component.</li>
+                <li><code>x</code>: X-coordinate.</li>
+                <li><code>y</code>: Y-coordinate.</li>
+            </ul>
+        </li>
+    </ul>
+
+    <h4><code>getComponents(): string[]</code></h4>
+    <ul>
+        <li><strong>Description</strong>: Returns an array of available component names.</li>
+        <li><strong>Returns</strong>: Array of strings.</li>
+    </ul>
+
+    <h3>State Management</h3>
+    <h4><code>undo(): void</code></h4>
+    <ul>
+        <li><strong>Description</strong>: Reverts to the previous state (Ctrl+Z).</li>
+        <li><strong>Shortcut</strong>: Ctrl+Z (or Cmd+Z on Mac).</li>
+    </ul>
+
+    <h4><code>redo(): void</code></h4>
+    <ul>
+        <li><strong>Description</strong>: Reapplies the next state (Ctrl+Y).</li>
+        <li><strong>Shortcut</strong>: Ctrl+Y (or Cmd+Y on Mac).</li>
+    </ul>
+
+    <h4><code>saveToJsonFile(filename: string = "canvas.json"): void</code></h4>
+    <ul>
+        <li><strong>Description</strong>: Saves the canvas state (shapes, components, settings) as a JSON file.</li>
+        <li><strong>Parameters</strong>: <code>filename</code> - File name (default: "canvas.json").</li>
+    </ul>
+
+    <h4><code>importFromJsonFile(file: File): Promise&lt;void&gt;</code></h4>
+    <ul>
+        <li><strong>Description</strong>: Imports a canvas state from a JSON file.</li>
+        <li><strong>Parameters</strong>: <code>file</code> - File object containing JSON data.</li>
+        <li><strong>Returns</strong>: Promise resolving when import is complete.</li>
+    </ul>
+
+    <h4><code>getElementsAsJson(): Shape[]</code></h4>
+    <ul>
+        <li><strong>Description</strong>: Returns all shapes as a JSON-compatible array.</li>
+        <li><strong>Returns</strong>: Array of <code>Shape</code> objects.</li>
+    </ul>
+
+    <h4><code>loadElementsFromJson(jsonData: any): void</code></h4>
+    <ul>
+        <li><strong>Description</strong>: Loads shapes from JSON data.</li>
+        <li><strong>Parameters</strong>: <code>jsonData</code> - JSON string or object.</li>
+    </ul>
+
+    <h3>Specialized Shape Methods</h3>
+    <h4><code>addSelectorOption(id: string, option: string): void</code></h4>
+    <ul>
+        <li><strong>Description</strong>: Adds an option to a selector shape.</li>
+        <li><strong>Parameters</strong>:
+            <ul>
+                <li><code>id</code>: Shape ID (must be 'selector' type).</li>
+                <li><code>option</code>: Option text.</li>
+            </ul>
+        </li>
+    </ul>
+
+    <h4><code>setCheckboxState(id: string, checked: boolean): void</code></h4>
+    <ul>
+        <li><strong>Description</strong>: Sets the checked state of a checkbox shape.</li>
+        <li><strong>Parameters</strong>:
+            <ul>
+                <li><code>id</code>: Shape ID (must be 'checkbox' type).</li>
+                <li><code>checked</code>: Boolean state.</li>
+            </ul>
+        </li>
+    </ul>
+
+    <h4><code>setTableData(id: string, tableData: { rows: { cells: string[] }[] }): void</code></h4>
+    <ul>
+        <li><strong>Description</strong>: Sets the data for a table shape.</li>
+        <li><strong>Parameters</strong>:
+            <ul>
+                <li><code>id</code>: Shape ID (must be 'table' type).</li>
+                <li><code>tableData</code>: Table structure.</li>
+            </ul>
+        </li>
+    </ul>
+
+    <h4><code>setBackgroundImage(id: string, imageUrl: string): void</code></h4>
+    <ul>
+        <li><strong>Description</strong>: Sets a background image for a shape.</li>
+        <li><strong>Parameters</strong>:
+            <ul>
+                <li><code>id</code>: Shape ID.</li>
+                <li><code>imageUrl</code>: URL of the image.</li>
+            </ul>
+        </li>
+    </ul>
+
+    <h3>Utility Methods</h3>
+    <h4><code>setOverlay(show: boolean): void</code></h4>
+    <ul>
+        <li><strong>Description</strong>: Toggles the visibility of selection handles.</li>
+        <li><strong>Parameters</strong>: <code>show</code> - Boolean.</li>
+    </ul>
+
+    <h4><code>updateSettings(settings: CanvasSettings): void</code></h4>
+    <ul>
+        <li><strong>Description</strong>: Updates canvas settings.</li>
+        <li><strong>Parameters</strong>: <code>settings</code> - Partial <code>CanvasSettings</code> object.</li>
+    </ul>
+
+    <h2 id="shape-interface">Shape Interface</h2>
+    <pre><code>interface Shape {
+    id: string;                    // Unique identifier
+    type: string;                  // Shape type
+    x: number;                     // X position
+    y: number;                     // Y position
+    width: string;                 // Width (e.g., "50px")
+    height: string;                // Height (e.g., "50px")
+    styles: AdvancedStyles;        // CSS-like styles
+    children: Shape[];             // Nested shapes
+    radius?: number;               // For circles
+    x2?: number;                   // For lines (end X)
+    y2?: number;                   // For lines (end Y)
+    points?: { x: number; y: number }[]; // For triangles
+    text?: string;                 // For text/buttons
+    src?: string;                  // For images
+    options?: string[];            // For selectors
+    selectedOption?: string;       // For selectors
+    checked?: boolean;             // For checkboxes
+    tableData?: { rows: { cells: string[] }[] }; // For tables
+    frames?: { x: number; y: number; rotation: number; duration: number }[]; // Animation keyframes
+}
+</code></pre>
+
+    <h2 id="advancedstyles-interface">AdvancedStyles Interface</h2>
+    <p>The <code>AdvancedStyles</code> interface defines CSS-like properties for shapes. Notable properties include:</p>
+    <ul>
+        <li><code>backgroundColor: string</code></li>
+        <li><code>border: string</code></li>
+        <li><code>borderWidth: string</code></li>
+        <li><code>borderColor: string</code></li>
+        <li><code>opacity: number | string</code></li>
+        <li><code>fontSize: string</code></li>
+        <li><code>color: string</code></li>
+        <li><code>transform: string</code> (e.g., "rotate(45deg)")</li>
+        <li>Full list available in the source code.</li>
+    </ul>
+
+    <h2 id="example">Example</h2>
+    <pre><code>&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;
+    &lt;meta charset="UTF-8"&gt;
+    &lt;title&gt;Figma-like App&lt;/title&gt;
+    &lt;link rel="stylesheet" href="styles.css"&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;div class="app-container"&gt;
+        &lt;div class="sidebar"&gt;
+            &lt;h2&gt;Elements&lt;/h2&gt;
+            &lt;div class="element" draggable="true" data-type="rectangle"&gt;Rectangle&lt;/div&gt;
+            &lt;div class="element" draggable="true" data-type="text"&gt;Text&lt;/div&gt;
+            &lt;div class="element" draggable="true" data-type="button"&gt;Button&lt;/div&gt;
+        &lt;/div&gt;
+        &lt;div class="main-content"&gt;
+            &lt;div class="toolbar"&gt;
+                &lt;button onclick="canvasManipulator.deleteSelected()"&gt;Delete&lt;/button&gt;
+                &lt;button onclick="canvasManipulator.saveToJsonFile()"&gt;Save&lt;/button&gt;
+            &lt;/div&gt;
+            &lt;canvas id="canvas"&gt;&lt;/canvas&gt;
+        &lt;/div&gt;
+        &lt;div class="animation-panel"&gt;
+            &lt;h2&gt;Animation&lt;/h2&gt;
+            &lt;select id="shape-select"&gt;&lt;/select&gt;
+            &lt;button onclick="addKeyframe()"&gt;Add Keyframe&lt;/button&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+
+    &lt;script src="canvas-manipulator.js"&gt;&lt;/script&gt;
+    &lt;script&gt;
+        const canvasManipulator = new CanvasManipulator('canvas', { width: 800, height: 600 });
+
+        document.querySelectorAll('.element').forEach(el => {
+            el.addEventListener('dragstart', e => e.dataTransfer.setData('text/plain', el.dataset.type));
+        });
+
+        canvas.addEventListener('dragover', e => e.preventDefault());
+        canvas.addEventListener('drop', e => {
+            e.preventDefault();
+            const type = e.dataTransfer.getData('text/plain');
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+            const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+            const shape = canvasManipulator.createShape(type, x, y);
+            canvasManipulator.addShape(shape);
+            updateShapeSelect();
+        });
+
+        function updateShapeSelect() {
+            const select = document.getElementById('shape-select');
+            select.innerHTML = '';
+            canvasManipulator.getElementsAsJson().forEach(shape => {
+                const option = document.createElement('option');
+                option.value = shape.id;
+                option.textContent = shape.type;
+                select.appendChild(option);
+            });
+        }
+
+        function addKeyframe() {
+            const shapeId = document.getElementById('shape-select').value;
+            const shape = canvasManipulator.getElementById(shapeId);
+            if (shape) {
+                shape.frames = shape.frames || [];
+                shape.frames.push({ x: shape.x, y: shape.y, rotation: 0, duration: 1000 });
+                canvasManipulator.updateShapeProperty(shapeId, 'frames', shape.frames);
+            }
+        }
+
+        updateShapeSelect();
+    &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</code></pre>
+
+    <p>This documentation covers all functionalities of <code>CanvasManipulator</code> with detailed API descriptions.
+    </p>
+</body>
+
+</html>
