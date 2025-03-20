@@ -204,6 +204,7 @@ class CanvasManipulator {
 		this.canvas.tabIndex = 0;
 		this.editingShape = null; // Track the shape being edited
 		this.cursorPos = 0; // Track cursor position in text
+		this.showElementTree = false;
 
 		const savedState = this.state.load();
 		if (savedState) this.shapes = savedState;
@@ -371,6 +372,31 @@ class CanvasManipulator {
 		return jsx;
 	}
 
+	drawElementTree(x = 10, y = 10) {
+		this.ctx.save();
+		this.ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transformations for readability
+		this.ctx.font = "12px Arial";
+		this.ctx.fillStyle = "#000000";
+		this.ctx.textAlign = "left";
+		this.ctx.textBaseline = "top";
+
+		const drawTree = (shapes, indent = 0, startY) => {
+			let currentY = startY;
+			shapes.forEach((shape) => {
+				const text = `${" ".repeat(indent * 2)}${shape.type} (id: ${shape.id})`;
+				this.ctx.fillText(text, x, currentY);
+				currentY += 15;
+				if (shape.children && shape.children.length) {
+					currentY = drawTree(shape.children, indent + 1, currentY);
+				}
+			});
+			return currentY;
+		};
+
+		drawTree(this.shapes, 0, y);
+		this.ctx.restore();
+	}
+
 	redraw() {
 		this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 		this.ctx.fillStyle = this.settings.backgroundColor;
@@ -381,7 +407,7 @@ class CanvasManipulator {
 		this.ctx.scale(this.scale, this.scale);
 
 		if (this.showGrid && this.snapToGrid) {
-			// Grid rendering
+			// Grid rendering (unchanged)
 			this.ctx.strokeStyle = "#ddd";
 			this.ctx.lineWidth = 0.5 / this.scale;
 			for (let x = 0; x < this.canvas.width; x += this.gridSize) {
@@ -399,7 +425,7 @@ class CanvasManipulator {
 		}
 
 		if (this.showRulers) {
-			// Ruler rendering
+			// Ruler rendering (unchanged)
 			this.ctx.strokeStyle = "#000";
 			this.ctx.lineWidth = 1 / this.scale;
 			this.ctx.beginPath();
@@ -441,6 +467,10 @@ class CanvasManipulator {
 		}
 
 		this.ctx.restore();
+
+		if (this.showElementTree) {
+			this.drawElementTree(10, 10);
+		}
 	}
 
 	clearCanvas() {
@@ -463,6 +493,11 @@ class CanvasManipulator {
 
 	toggleRulers() {
 		this.showRulers = !this.showRulers;
+		this.redraw();
+	}
+
+	toggleElementTree() {
+		this.showElementTree = !this.showElementTree;
 		this.redraw();
 	}
 
@@ -591,14 +626,49 @@ class CanvasManipulator {
 			parent !== child &&
 			["div", "scroll", "board"].includes(parent.type)
 		) {
-			this.shapes = this.shapes.filter((s) => s.id !== childId);
-			child.x -= parent.x;
-			child.y -= parent.y;
+			// Remove child from its current location
+			this.removeShapeFromCurrentLocation(child);
+
+			// Adjust child coordinates relative to parent
+			const parentAbsPos = this.getAbsolutePosition(parent);
+			const childAbsPos = this.getAbsolutePosition(child);
+			child.x = childAbsPos.x - parentAbsPos.x;
+			child.y = childAbsPos.y - parentAbsPos.y;
+
+			// Add child to parent's children
 			if (!parent.children) parent.children = [];
 			parent.children.push(child);
-			if (parent.type === "div") parent.styles.display = "flex";
+
+			// Set flex display for div if not already set
+			if (parent.type === "div" && parent.styles.display !== "flex") {
+				parent.styles.display = "flex";
+			}
+
 			this.state.addState([...this.shapes], `Nest ${childId} in ${parentId}`);
 			this.redraw();
+		}
+	}
+
+	// Get absolute position of a shape considering all parent offsets
+	getAbsolutePosition(shape) {
+		let x = shape.x;
+		let y = shape.y;
+		let parent = this.getParent(shape);
+		while (parent) {
+			x += parent.x;
+			y += parent.y;
+			parent = this.getParent(parent);
+		}
+		return { x, y };
+	}
+
+	// Remove shape from its current location in the hierarchy
+	removeShapeFromCurrentLocation(shape) {
+		const parent = this.getParent(shape);
+		if (parent && parent.children) {
+			parent.children = parent.children.filter((s) => s.id !== shape.id);
+		} else {
+			this.shapes = this.shapes.filter((s) => s.id !== shape.id);
 		}
 	}
 
@@ -1128,7 +1198,7 @@ class CanvasManipulator {
 				break;
 			case "circle":
 				this.ctx.beginPath();
-				this.ctx.arc(x + width / 2, y + height / 2, width / 2, 0, Math.PI * 2); // Center circle in bounds
+				this.ctx.arc(x + width / 2, y + height / 2, width / 2, 0, Math.PI * 2);
 				this.ctx.fill();
 				this.ctx.stroke();
 				break;
@@ -1142,9 +1212,9 @@ class CanvasManipulator {
 				break;
 			case "triangle":
 				this.ctx.beginPath();
-				this.ctx.moveTo(x + width / 2, y); // Top center
-				this.ctx.lineTo(x + width, y + height); // Bottom right
-				this.ctx.lineTo(x, y + height); // Bottom left
+				this.ctx.moveTo(x + width / 2, y);
+				this.ctx.lineTo(x + width, y + height);
+				this.ctx.lineTo(x, y + height);
 				this.ctx.closePath();
 				this.ctx.fill();
 				this.ctx.stroke();
@@ -1270,7 +1340,7 @@ class CanvasManipulator {
 						img.onload = () => {
 							this.mediaCache.set(shape.id, { src: shape.src, element: img });
 							this.ctx.drawImage(img, x, y, width, height);
-							this.redraw(); // Ensure redraw after load
+							this.redraw();
 						};
 					}
 				}
@@ -1288,7 +1358,7 @@ class CanvasManipulator {
 						video.onloadeddata = () => {
 							this.mediaCache.set(shape.id, { src: shape.src, element: video });
 							this.ctx.drawImage(video, x, y, width, height);
-							this.redraw(); // Ensure redraw after load
+							this.redraw();
 						};
 					}
 				} else {
@@ -1932,7 +2002,6 @@ class CanvasManipulator {
 				this.selectedShapes = [shape];
 			}
 
-			// Exit editing mode if selecting a different shape
 			if (this.editingShape && this.editingShape !== shape) {
 				this.editingShape = null;
 			}
@@ -1947,6 +2016,8 @@ class CanvasManipulator {
 				shape.selectedOption = shape.options[nextIndex];
 				this.state.addState([...this.shapes], "Change Selector Option");
 				this.redraw();
+			} else if (shape.type === "text" || shape.type === "input") {
+				this.startDirectTextEditing(shape);
 			} else if (shape.events?.onClick) {
 				eval(shape.events.onClick);
 				this.redraw();
@@ -1979,7 +2050,6 @@ class CanvasManipulator {
 			});
 		} else {
 			this.selectedShapes = [];
-			// Exit editing mode if clicking outside any shape
 			if (this.editingShape) {
 				this.editingShape = null;
 			}
@@ -2000,8 +2070,12 @@ class CanvasManipulator {
 		}
 
 		if (this.isRotating && shape) {
+			const parent = this.getParent(shape);
+			const parentX = parent ? this.getAbsolutePosition(parent).x : 0;
+			const parentY = parent ? this.getAbsolutePosition(parent).y : 0;
 			const centerX =
 				shape.x +
+				parentX +
 				this.calculateDimension(
 					shape.width,
 					this.canvas.width,
@@ -2010,6 +2084,7 @@ class CanvasManipulator {
 					2;
 			const centerY =
 				shape.y +
+				parentY +
 				this.calculateDimension(
 					shape.height,
 					this.canvas.height,
@@ -2026,16 +2101,20 @@ class CanvasManipulator {
 		} else if (this.isDragging && this.selectedShapes.length) {
 			const dx = x - this.startX;
 			const dy = y - this.startY;
+
 			this.selectedShapes.forEach((shape) => {
 				shape.x += dx;
 				shape.y += dy;
+
 				if (this.snapToGrid) {
 					shape.x = Math.round(shape.x / this.gridSize) * this.gridSize;
 					shape.y = Math.round(shape.y / this.gridSize) * this.gridSize;
 				}
-				this.restrictWithinParent(shape);
+
+				this.restrictWithinParentWithOverflow(shape);
 				this.showSmartGuides(shape);
 			});
+
 			this.startX = x;
 			this.startY = y;
 			this.redraw();
@@ -2056,12 +2135,54 @@ class CanvasManipulator {
 			this.restrictWithinParent(shape);
 			this.redraw();
 		} else if (this.isPanning) {
-			// Middle mouse panning remains
 			this.panX += x - this.startX;
 			this.panY += y - this.startY;
 			this.startX = x;
 			this.startY = y;
 			this.redraw();
+		}
+	}
+
+	restrictWithinParentWithOverflow(shape, parent = null) {
+		if (!parent) parent = this.getParent(shape);
+		if (!parent) return;
+
+		const parentWidth = this.calculateDimension(
+			parent.width,
+			this.canvas.width,
+			this.canvas.height
+		);
+		const parentHeight = this.calculateDimension(
+			parent.height,
+			this.canvas.height,
+			this.canvas.height
+		);
+		const width = this.calculateDimension(
+			shape.width,
+			parentWidth,
+			parentHeight
+		);
+		const height = this.calculateDimension(
+			shape.height,
+			parentWidth,
+			parentHeight
+		);
+
+		const isOverflowHidden = parent.styles.overflow === "hidden";
+
+		if (isOverflowHidden) {
+			shape.x = Math.max(0, Math.min(shape.x, parentWidth - width));
+			shape.y = Math.max(0, Math.min(shape.y, parentHeight - height));
+
+			if (width > parentWidth) {
+				shape.x = 0;
+			}
+			if (height > parentHeight) {
+				shape.y = 0;
+			}
+		} else {
+			shape.x = Math.max(-width + 10, Math.min(shape.x, parentWidth - 10));
+			shape.y = Math.max(-height + 10, Math.min(shape.y, parentHeight - 10));
 		}
 	}
 
@@ -2074,9 +2195,10 @@ class CanvasManipulator {
 				["div", "scroll", "board"].includes(target.type) &&
 				!this.selectedShapes.includes(target)
 			) {
-				this.selectedShapes.forEach((shape) =>
-					this.nestElement(target.id, shape.id)
-				);
+				this.selectedShapes.forEach((shape) => {
+					this.nestElement(target.id, shape.id);
+				});
+				this.selectedShapes = []; // Clear selection after nesting
 			}
 		}
 		if (
@@ -2102,9 +2224,61 @@ class CanvasManipulator {
 	handleDoubleClick(e) {
 		const { x, y } = this.getMousePos(e);
 		const shape = this.findShapeAtPoint(x, y);
-		if (shape && (shape.type === "text" || shape.type === "input")) {
-			this.startDirectTextEditing(shape);
+
+		if (shape) {
+			// Search for the deepest nested child at the click position
+			let selectedShape = shape;
+			if (shape.children?.length) {
+				const deepestChild = this.findDeepestChildAtPoint(x, y, shape);
+				if (deepestChild) {
+					selectedShape = deepestChild;
+				}
+			}
+
+			// Select the found shape (either deepest child or parent)
+			this.selectedShapes = [selectedShape];
+
+			// Handle text/input editing if applicable
+			if (selectedShape.type === "text" || selectedShape.type === "input") {
+				this.startDirectTextEditing(selectedShape);
+			}
+
+			this.redraw();
+		} else {
+			// Clear selection if clicking empty space
+			this.selectedShapes = [];
+			this.editingShape = null;
+			this.redraw();
 		}
+	}
+
+	// New helper function to find the deepest nested child
+	findDeepestChildAtPoint(x, y, shape) {
+		let deepestChild = null;
+		const parentX = shape.x;
+		const parentY = shape.y;
+
+		const searchChildren = (children, offsetX, offsetY) => {
+			for (let i = children.length - 1; i >= 0; i--) {
+				const child = children[i];
+				const absX = child.x + offsetX;
+				const absY = child.y + offsetY;
+
+				if (this.isPointInShape(x - offsetX, y - offsetY, child)) {
+					deepestChild = child;
+					if (child.children?.length) {
+						searchChildren(child.children, absX, absY);
+					}
+					break; // Stop at first hit, we'll check its children recursively
+				}
+			}
+		};
+
+		if (shape.children?.length) {
+			searchChildren(shape.children, parentX, parentY);
+		}
+
+		return deepestChild;
 	}
 
 	handleZoom(e) {
@@ -2311,23 +2485,19 @@ class CanvasManipulator {
 	}
 
 	findShapeAtPoint(x, y, excludeSelected = false) {
-		for (let i = this.shapes.length - 1; i >= 0; i--) {
-			const shape = this.shapes[i];
-			if (excludeSelected && this.selectedShapes.includes(shape)) continue;
-			if (this.isPointInShape(x, y, shape)) {
-				if (shape.type === "div" && shape.children?.length) {
-					const nested = this.findNestedShapeAtPoint(
-						x,
-						y,
-						shape.children,
-						shape
-					);
-					return nested || shape;
+		const searchShapes = (shapes, parentX = 0, parentY = 0) => {
+			for (let i = shapes.length - 1; i >= 0; i--) {
+				const shape = shapes[i];
+				if (excludeSelected && this.selectedShapes.includes(shape)) continue;
+				const absX = shape.x + parentX;
+				const absY = shape.y + parentY;
+				if (this.isPointInShape(x - parentX, y - parentY, shape)) {
+					return shape; // Return the top-most shape, we'll find children in handleDoubleClick
 				}
-				return shape;
 			}
-		}
-		return null;
+			return null;
+		};
+		return searchShapes(this.shapes);
 	}
 
 	findNestedShapeAtPoint(x, y, children, parent) {
@@ -2364,42 +2534,32 @@ class CanvasManipulator {
 
 	isPointInShape(x, y, shape) {
 		const parent = this.getParent(shape);
-		const parentWidth = parent
-			? this.calculateDimension(
-					parent.width,
-					this.canvas.width,
-					this.canvas.height
-			  )
-			: this.canvas.width;
-		const parentHeight = parent
-			? this.calculateDimension(
-					parent.height,
-					this.canvas.height,
-					this.canvas.height
-			  )
-			: this.canvas.height;
+		const parentX = parent ? this.getAbsolutePosition(parent).x : 0;
+		const parentY = parent ? this.getAbsolutePosition(parent).y : 0;
+		const absX = shape.x + parentX;
+		const absY = shape.y + parentY;
 		const width = this.calculateDimension(
 			shape.width,
-			parentWidth,
-			parentHeight
+			this.canvas.width,
+			this.canvas.height
 		);
 		const height = this.calculateDimension(
 			shape.height,
-			parentWidth,
-			parentHeight
+			this.canvas.height,
+			this.canvas.height
 		);
 		const rotated = this.rotatePoint(
 			x,
 			y,
-			shape.x + width / 2,
-			shape.y + height / 2,
+			absX + width / 2,
+			absY + height / 2,
 			this.getRotationAngle(shape)
 		);
 		return (
-			rotated.x >= shape.x &&
-			rotated.x <= shape.x + width &&
-			rotated.y >= shape.y &&
-			rotated.y <= shape.y + height
+			rotated.x >= absX &&
+			rotated.x <= absX + width &&
+			rotated.y >= absY &&
+			rotated.y <= absY + height
 		);
 	}
 
@@ -2420,50 +2580,31 @@ class CanvasManipulator {
 
 	getResizeHandle(x, y, shape) {
 		const parent = this.getParent(shape);
-		const parentWidth = parent
-			? this.calculateDimension(
-					parent.width,
-					this.canvas.width,
-					this.canvas.height
-			  )
-			: this.canvas.width;
-		const parentHeight = parent
-			? this.calculateDimension(
-					parent.height,
-					this.canvas.height,
-					this.canvas.height
-			  )
-			: this.canvas.height;
+		const parentX = parent ? this.getAbsolutePosition(parent).x : 0;
+		const parentY = parent ? this.getAbsolutePosition(parent).y : 0;
+		const absX = shape.x + parentX;
+		const absY = shape.y + parentY;
 		const width = this.calculateDimension(
 			shape.width,
-			parentWidth,
-			parentHeight
+			this.canvas.width,
+			this.canvas.height
 		);
 		const height = this.calculateDimension(
 			shape.height,
-			parentWidth,
-			parentHeight
+			this.canvas.height,
+			this.canvas.height
 		);
+
 		const handles = [
-			{ pos: "se", x: shape.x + width - 5, y: shape.y + height - 5, size: 10 },
-			{ pos: "sw", x: shape.x - 5, y: shape.y + height - 5, size: 10 },
-			{ pos: "ne", x: shape.x + width - 5, y: shape.y - 5, size: 10 },
-			{ pos: "nw", x: shape.x - 5, y: shape.y - 5, size: 10 },
-			{ pos: "n", x: shape.x + width / 2 - 5, y: shape.y - 5, size: 10 },
-			{
-				pos: "s",
-				x: shape.x + width / 2 - 5,
-				y: shape.y + height - 5,
-				size: 10,
-			},
-			{
-				pos: "e",
-				x: shape.x + width - 5,
-				y: shape.y + height / 2 - 5,
-				size: 10,
-			},
-			{ pos: "w", x: shape.x - 5, y: shape.y + height / 2 - 5, size: 10 },
-			{ pos: "rotate", x: shape.x + width / 2 - 5, y: shape.y - 25, size: 10 },
+			{ pos: "se", x: absX + width - 5, y: absY + height - 5, size: 10 },
+			{ pos: "sw", x: absX - 5, y: absY + height - 5, size: 10 },
+			{ pos: "ne", x: absX + width - 5, y: absY - 5, size: 10 },
+			{ pos: "nw", x: absX - 5, y: absY - 5, size: 10 },
+			{ pos: "n", x: absX + width / 2 - 5, y: absY - 5, size: 10 },
+			{ pos: "s", x: absX + width / 2 - 5, y: absY + height - 5, size: 10 },
+			{ pos: "e", x: absX + width - 5, y: absY + height / 2 - 5, size: 10 },
+			{ pos: "w", x: absX - 5, y: absY + height / 2 - 5, size: 10 },
+			{ pos: "rotate", x: absX + width / 2 - 5, y: absY - 25, size: 10 },
 		];
 		return (
 			handles.find(
@@ -2578,12 +2719,17 @@ class CanvasManipulator {
 	}
 
 	getParent(shape) {
-		for (const parent of this.shapes) {
-			if (parent.children && parent.children.includes(shape)) return parent;
-			const nested = this.findNestedParent(shape, parent.children);
-			if (nested) return nested;
-		}
-		return null;
+		const searchParent = (shapes) => {
+			for (const parent of shapes) {
+				if (parent.children && parent.children.includes(shape)) return parent;
+				if (parent.children) {
+					const found = searchParent(parent.children);
+					if (found) return found;
+				}
+			}
+			return null;
+		};
+		return searchParent(this.shapes);
 	}
 
 	findNestedParent(shape, children) {
