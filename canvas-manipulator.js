@@ -61,7 +61,7 @@ const AdvancedStyles = {
 	strokeWidth: "2px",
 };
 
-// State management class
+// State management class with enhanced history tracking
 class StateManager {
 	constructor(key) {
 		this.key = key;
@@ -70,11 +70,14 @@ class StateManager {
 		this.batchSize = 100;
 	}
 
-	addState(state) {
+	addState(state, actionDescription = "Unknown Action") {
 		if (this.currentIndex < this.history.length - 1) {
 			this.history = this.history.slice(0, this.currentIndex + 1);
 		}
-		this.history.push(this.cloneState(state));
+		this.history.push({
+			state: this.cloneState(state),
+			action: actionDescription,
+		});
 		this.currentIndex++;
 		if (this.history.length > this.batchSize) {
 			this.history.shift();
@@ -86,7 +89,7 @@ class StateManager {
 	undo() {
 		if (this.currentIndex > 0) {
 			this.currentIndex--;
-			return this.cloneState(this.history[this.currentIndex]);
+			return this.cloneState(this.history[this.currentIndex].state);
 		}
 		return null;
 	}
@@ -94,7 +97,7 @@ class StateManager {
 	redo() {
 		if (this.currentIndex < this.history.length - 1) {
 			this.currentIndex++;
-			return this.cloneState(this.history[this.currentIndex]);
+			return this.cloneState(this.history[this.currentIndex].state);
 		}
 		return null;
 	}
@@ -104,7 +107,7 @@ class StateManager {
 		if (saved) {
 			this.history = JSON.parse(saved);
 			this.currentIndex = this.history.length - 1;
-			return this.cloneState(this.history[this.currentIndex]);
+			return this.cloneState(this.history[this.currentIndex].state);
 		}
 		return null;
 	}
@@ -113,18 +116,21 @@ class StateManager {
 		localStorage.removeItem(this.key);
 	}
 
+	getHistory() {
+		return this.history.map((entry, index) => ({
+			index,
+			action: entry.action,
+			isCurrent: index === this.currentIndex,
+		}));
+	}
+
 	cloneState(state) {
 		return state.map((shape) => {
 			const newShape = { ...shape };
-			if (newShape.children) {
+			if (newShape.children)
 				newShape.children = this.cloneState(newShape.children);
-			}
-			if (newShape.styles) {
-				newShape.styles = { ...newShape.styles };
-			}
-			if (newShape.frames) {
-				newShape.frames = [...newShape.frames];
-			}
+			if (newShape.styles) newShape.styles = { ...newShape.styles };
+			if (newShape.frames) newShape.frames = [...newShape.frames];
 			return newShape;
 		});
 	}
@@ -152,6 +158,9 @@ class CanvasManipulator {
 			settings.showOverlay !== undefined ? settings.showOverlay : false;
 		this.disableZoom =
 			settings.disableZoom !== undefined ? settings.disableZoom : false;
+		this.gridSize = settings.gridSize || 10; // Custom grid size
+		this.snapToGrid =
+			settings.snapToGrid !== undefined ? settings.snapToGrid : true;
 		this.settings = {
 			width: settings.width || 800,
 			height: settings.height || 600,
@@ -161,18 +170,17 @@ class CanvasManipulator {
 		this.animationFrames = new Map();
 		this.currentFrameIndex = new Map();
 		this.pausedAnimations = new Set();
-		this.scrollOffsets = new Map(); // Track scroll positions for scroll elements
+		this.scrollOffsets = new Map();
+		this.hoverHandle = null; // Track handle under mouse
+		this.templates = new Map(); // Store templates
+		this.layersVisible = new Map(); // Track layer visibility
 
-		// Initialize canvas
 		this.canvas.width = this.settings.width;
 		this.canvas.height = this.settings.height;
 		this.canvas.tabIndex = 0;
 
-		// Load initial state
 		const savedState = this.state.load();
-		if (savedState) {
-			this.shapes = savedState;
-		}
+		if (savedState) this.shapes = savedState;
 
 		this.initEventListeners();
 		this.redraw();
@@ -207,7 +215,87 @@ class CanvasManipulator {
 	}
 
 	exportCanvas(format = "png", quality = 0.92) {
+		if (format === "svg") return this.exportToSVG();
+		if (format === "html") return this.exportToHTML();
 		return this.canvas.toDataURL(`image/${format}`, quality);
+	}
+
+	exportToSVG() {
+		let svg = `<svg width="${this.canvas.width}" height="${this.canvas.height}" xmlns="http://www.w3.org/2000/svg">`;
+		this.shapes.forEach((shape) => {
+			if (this.isLayerVisible(shape.id)) svg += this.shapeToSVG(shape);
+		});
+		svg += "</svg>";
+		return "data:image/svg+xml;base64," + btoa(svg);
+	}
+
+	shapeToSVG(shape, parentX = 0, parentY = 0) {
+		const x = shape.x + parentX;
+		const y = shape.y + parentY;
+		const width = this.calculateDimension(
+			shape.width,
+			this.canvas.width,
+			this.canvas.height
+		);
+		const height = this.calculateDimension(
+			shape.height,
+			this.canvas.height,
+			this.canvas.height
+		);
+		let svg = "";
+		switch (shape.type) {
+			case "rectangle":
+				svg = `<rect x="${x}" y="${y}" width="${width}" height="${height}" fill="${shape.styles.backgroundColor}" stroke="${shape.styles.borderColor}" stroke-width="${shape.styles.borderWidth}"/>`;
+				break;
+			case "text":
+				svg = `<text x="${x}" y="${
+					y + parseFloat(shape.styles.fontSize)
+				}" font-family="${shape.styles.fontFamily}" font-size="${
+					shape.styles.fontSize
+				}" fill="${shape.styles.color}">${shape.text}</text>`;
+				break;
+			// Add other shape types as needed
+			default:
+				svg = `<rect x="${x}" y="${y}" width="${width}" height="${height}" fill="${shape.styles.backgroundColor}" stroke="${shape.styles.borderColor}" stroke-width="${shape.styles.borderWidth}"/>`;
+		}
+		if (shape.children) {
+			shape.children.forEach((child) => {
+				if (this.isLayerVisible(child.id)) svg += this.shapeToSVG(child, x, y);
+			});
+		}
+		return svg;
+	}
+
+	exportToHTML() {
+		let html = `<div style="width:${this.canvas.width}px;height:${this.canvas.height}px;background:${this.settings.backgroundColor};position:relative;">`;
+		this.shapes.forEach((shape) => {
+			if (this.isLayerVisible(shape.id)) html += this.shapeToHTML(shape);
+		});
+		html += "</div>";
+		return html;
+	}
+
+	shapeToHTML(shape, parentX = 0, parentY = 0) {
+		const x = shape.x + parentX;
+		const y = shape.y + parentY;
+		const width = shape.width;
+		const height = shape.height;
+		let styles = `position:absolute;left:${x}px;top:${y}px;width:${width};height:${height};`;
+		for (const [key, value] of Object.entries(shape.styles)) {
+			styles += `${key.replace(/([A-Z])/g, "-$1").toLowerCase()}:${value};`;
+		}
+		let html = `<div style="${styles}" data-id="${shape.id}">`;
+		if (shape.type === "text") html += shape.text;
+		if (shape.type === "button")
+			html += `<button>${shape.text || "Button"}</button>`;
+		if (shape.children) {
+			shape.children.forEach((child) => {
+				if (this.isLayerVisible(child.id))
+					html += this.shapeToHTML(child, x, y);
+			});
+		}
+		html += "</div>";
+		return html;
 	}
 
 	redraw() {
@@ -215,10 +303,27 @@ class CanvasManipulator {
 		this.ctx.fillStyle = this.settings.backgroundColor;
 		this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-		this.shapes.forEach((shape) => {
-			this.drawShape(shape);
-		});
+		// Draw grid if enabled
+		if (this.snapToGrid) {
+			this.ctx.strokeStyle = "#ddd";
+			this.ctx.lineWidth = 0.5;
+			for (let x = 0; x < this.canvas.width; x += this.gridSize) {
+				this.ctx.beginPath();
+				this.ctx.moveTo(x, 0);
+				this.ctx.lineTo(x, this.canvas.height);
+				this.ctx.stroke();
+			}
+			for (let y = 0; y < this.canvas.height; y += this.gridSize) {
+				this.ctx.beginPath();
+				this.ctx.moveTo(0, y);
+				this.ctx.lineTo(this.canvas.width, y);
+				this.ctx.stroke();
+			}
+		}
 
+		this.shapes.forEach((shape) => {
+			if (this.isLayerVisible(shape.id)) this.drawShape(shape);
+		});
 		if (this.showOverlay && this.selectedShapes.length) {
 			this.selectedShapes.forEach((shape) => this.drawSelection(shape));
 		}
@@ -231,7 +336,8 @@ class CanvasManipulator {
 		this.currentFrameIndex.clear();
 		this.pausedAnimations.clear();
 		this.scrollOffsets.clear();
-		this.state.addState([]);
+		this.layersVisible.clear();
+		this.state.addState([], "Clear Canvas");
 		this.redraw();
 	}
 
@@ -245,7 +351,7 @@ class CanvasManipulator {
 				this.shapes = this.shapes.filter((s) => s.id !== shape.id);
 			});
 			this.selectedShapes = [];
-			this.state.addState([...this.shapes]);
+			this.state.addState([...this.shapes], "Delete Selected");
 			this.redraw();
 		}
 	}
@@ -260,7 +366,7 @@ class CanvasManipulator {
 			} else {
 				shape.styles[property] = value;
 			}
-			this.state.addState([...this.shapes]);
+			this.state.addState([...this.shapes], `Update ${property} of ${id}`);
 			this.redraw();
 		}
 	}
@@ -268,8 +374,10 @@ class CanvasManipulator {
 	addShape(shape) {
 		shape.id = shape.id || `shape_${Date.now()}`;
 		shape.styles = { ...AdvancedStyles, ...shape.styles };
+		shape.layerIndex = this.shapes.length; // Assign layer index
 		this.shapes.push(shape);
-		this.state.addState([...this.shapes]);
+		this.layersVisible.set(shape.id, true);
+		this.state.addState([...this.shapes], `Add ${shape.type}`);
 		this.redraw();
 	}
 
@@ -284,24 +392,28 @@ class CanvasManipulator {
 			newShape.y += 20;
 			return newShape;
 		});
-		this.shapes.push(...newElements);
+		newElements.forEach((shape) => this.addShape(shape));
 		this.selectedShapes = newElements;
-		this.state.addState([...this.shapes]);
+		this.state.addState([...this.shapes], "Paste Elements");
 		this.redraw();
 	}
 
 	nestElement(parentId, childId) {
 		const parent = this.getElementById(parentId);
 		const child = this.getElementById(childId);
-		if (parent && child && parent !== child) {
+		if (
+			parent &&
+			child &&
+			parent !== child &&
+			["div", "scroll"].includes(parent.type)
+		) {
 			this.shapes = this.shapes.filter((s) => s.id !== childId);
 			child.x -= parent.x;
 			child.y -= parent.y;
+			if (!parent.children) parent.children = [];
 			parent.children.push(child);
-			if (parent.type === "div") {
-				parent.styles.display = "flex"; // Simulate flexbox for div
-			}
-			this.state.addState([...this.shapes]);
+			if (parent.type === "div") parent.styles.display = "flex";
+			this.state.addState([...this.shapes], `Nest ${childId} in ${parentId}`);
 			this.redraw();
 		}
 	}
@@ -345,8 +457,8 @@ class CanvasManipulator {
 			this.shapes = this.shapes.filter((s) => s.id !== el.id);
 		});
 
-		this.shapes.push(group);
-		this.state.addState([...this.shapes]);
+		this.addShape(group);
+		this.state.addState([...this.shapes], "Group Elements");
 		this.redraw();
 	}
 
@@ -392,9 +504,7 @@ class CanvasManipulator {
 	}
 
 	pauseAnimation(id) {
-		if (this.animationFrames.has(id)) {
-			this.pausedAnimations.add(id);
-		}
+		if (this.animationFrames.has(id)) this.pausedAnimations.add(id);
 	}
 
 	stopAnimation(id) {
@@ -463,11 +573,12 @@ class CanvasManipulator {
 					frames: shape.frames ? [...shape.frames] : [],
 					children: shape.children ? cloneShapes(shape.children) : [],
 				};
+				this.layersVisible.set(clonedShape.id, true);
 				return clonedShape;
 			});
 
 		this.shapes = cloneShapes(shapes);
-		this.state.addState([...this.shapes]);
+		this.state.addState([...this.shapes], "Load JSON");
 		this.redraw();
 	}
 
@@ -501,11 +612,10 @@ class CanvasManipulator {
 			child.y = (parentHeight - childHeight) / 2;
 		});
 
-		this.state.addState([...this.shapes]);
+		this.state.addState([...this.shapes], `Center Children in ${parentId}`);
 		this.redraw();
 	}
 
-	// New method to return acceptable types
 	getAcceptedTypes() {
 		return [
 			{ type: "rectangle", width: "200px", height: "200px" },
@@ -561,7 +671,6 @@ class CanvasManipulator {
 		];
 	}
 
-	// New function to create special shapes with file selection for image/video
 	createSpecialShape(type, x, y) {
 		const id = Date.now().toString();
 		const baseProps = {
@@ -667,14 +776,13 @@ class CanvasManipulator {
 						const file = e.target.files[0];
 						if (file) {
 							const reader = new FileReader();
-							reader.onload = (event) => {
+							reader.onload = (event) =>
 								resolve({
 									...baseProps,
 									src: event.target.result,
 									width: "200px",
 									height: "200px",
 								});
-							};
 							reader.readAsDataURL(file);
 						} else {
 							resolve({
@@ -696,14 +804,13 @@ class CanvasManipulator {
 						const file = e.target.files[0];
 						if (file) {
 							const reader = new FileReader();
-							reader.onload = (event) => {
+							reader.onload = (event) =>
 								resolve({
 									...baseProps,
 									src: event.target.result,
 									width: "300px",
 									height: "200px",
 								});
-							};
 							reader.readAsDataURL(file);
 						} else {
 							resolve({
@@ -721,7 +828,7 @@ class CanvasManipulator {
 					resolve({
 						...baseProps,
 						scrollDirection: "column",
-						scrollOffset: 0, // Initial scroll position
+						scrollOffset: 0,
 						width: "200px",
 						height: "200px",
 						styles: { ...baseProps.styles, overflow: "auto" },
@@ -734,7 +841,8 @@ class CanvasManipulator {
 	}
 
 	drawShape(shape, parentX = 0, parentY = 0) {
-		if (shape.styles.display === "none") return;
+		if (shape.styles.display === "none" || !this.isLayerVisible(shape.id))
+			return;
 
 		const width = this.calculateDimension(
 			shape.width,
@@ -785,9 +893,9 @@ class CanvasManipulator {
 				break;
 			case "triangle":
 				this.ctx.beginPath();
-				this.ctx.moveTo(shape.points[0].x, shape.points[0].y);
-				this.ctx.lineTo(shape.points[1].x, shape.points[1].y);
-				this.ctx.lineTo(shape.points[2].x, shape.points[2].y);
+				this.ctx.moveTo(shape.points[0].x + x, shape.points[0].y + y);
+				this.ctx.lineTo(shape.points[1].x + x, shape.points[1].y + y);
+				this.ctx.lineTo(shape.points[2].x + x, shape.points[2].y + y);
 				this.ctx.closePath();
 				this.ctx.fill();
 				this.ctx.stroke();
@@ -912,14 +1020,17 @@ class CanvasManipulator {
 			case "video":
 				this.ctx.fillRect(x, y, width, height);
 				this.ctx.strokeRect(x, y, width, height);
-				this.ctx.fillStyle = shape.styles.color;
-				this.ctx.font = `${shape.styles.fontSize} ${shape.styles.fontFamily}`;
-				this.ctx.textAlign = "center";
-				this.ctx.fillText(
-					"Video Placeholder",
-					x + width / 2,
-					y + height / 2 + 5
-				);
+				if (shape.src) {
+					// Placeholder for video playback (requires HTML video element for full functionality)
+					this.ctx.fillStyle = shape.styles.color;
+					this.ctx.font = `${shape.styles.fontSize} ${shape.styles.fontFamily}`;
+					this.ctx.textAlign = "center";
+					this.ctx.fillText(
+						"Video Placeholder",
+						x + width / 2,
+						y + height / 2 + 5
+					);
+				}
 				break;
 			case "scroll":
 				this.ctx.fillRect(x, y, width, height);
@@ -1031,27 +1142,24 @@ class CanvasManipulator {
 		this.ctx.strokeRect(shape.x - 2, shape.y - 2, width + 4, height + 4);
 
 		const handles = [
-			[shape.x + width - 5, shape.y + height - 5],
-			[shape.x - 5, shape.y + height - 5],
-			[shape.x + width - 5, shape.y - 5],
-			[shape.x - 5, shape.y - 5],
-			[shape.x + width / 2 - 5, shape.y - 5],
-			[shape.x + width / 2 - 5, shape.y + height - 5],
-			[shape.x + width - 5, shape.y + height / 2 - 5],
-			[shape.x - 5, shape.y + height / 2 - 5],
+			{ pos: "se", x: shape.x + width - 5, y: shape.y + height - 5 },
+			{ pos: "sw", x: shape.x - 5, y: shape.y + height - 5 },
+			{ pos: "ne", x: shape.x + width - 5, y: shape.y - 5 },
+			{ pos: "nw", x: shape.x - 5, y: shape.y - 5 },
+			{ pos: "n", x: shape.x + width / 2 - 5, y: shape.y - 5 },
+			{ pos: "s", x: shape.x + width / 2 - 5, y: shape.y + height - 5 },
+			{ pos: "e", x: shape.x + width - 5, y: shape.y + height / 2 - 5 },
+			{ pos: "w", x: shape.x - 5, y: shape.y + height / 2 - 5 },
+			{ pos: "rotate", x: shape.x + width / 2 - 5, y: shape.y - 20 },
 		];
-		this.ctx.fillStyle = "#ffffff";
-		this.ctx.strokeStyle = "#000000";
-		handles.forEach(([hx, hy]) => {
-			this.ctx.fillRect(hx, hy, 10, 10);
-			this.ctx.strokeRect(hx, hy, 10, 10);
-		});
 
-		this.ctx.beginPath();
-		this.ctx.arc(shape.x + width / 2, shape.y - 20, 5, 0, Math.PI * 2);
-		this.ctx.fill();
-		this.ctx.stroke();
-		this.ctx.closePath();
+		handles.forEach((handle) => {
+			this.ctx.fillStyle =
+				this.hoverHandle === handle.pos ? "#ff0000" : "#ffffff";
+			this.ctx.strokeStyle = "#000000";
+			this.ctx.fillRect(handle.x, handle.y, 10, 10);
+			this.ctx.strokeRect(handle.x, handle.y, 10, 10);
+		});
 
 		this.ctx.restore();
 	}
@@ -1061,13 +1169,172 @@ class CanvasManipulator {
 		this.redraw();
 	}
 
+	setGridSize(size) {
+		this.gridSize = size;
+		this.redraw();
+	}
+
+	toggleSnapToGrid() {
+		this.snapToGrid = !this.snapToGrid;
+		this.redraw();
+	}
+
+	// Layers Management
+	toggleLayerVisibility(id) {
+		this.layersVisible.set(id, !this.isLayerVisible(id));
+		this.redraw();
+	}
+
+	isLayerVisible(id) {
+		return this.layersVisible.get(id) !== false;
+	}
+
+	reorderLayer(id, newIndex) {
+		const shape = this.getElementById(id);
+		if (shape) {
+			const oldIndex = this.shapes.indexOf(shape);
+			this.shapes.splice(oldIndex, 1);
+			this.shapes.splice(newIndex, 0, shape);
+			this.state.addState([...this.shapes], `Reorder Layer ${id}`);
+			this.redraw();
+		}
+	}
+
+	getLayers() {
+		return this.shapes.map((shape, index) => ({
+			id: shape.id,
+			type: shape.type,
+			visible: this.isLayerVisible(shape.id),
+			index,
+		}));
+	}
+
+	// Multi-Select Operations
+	alignSelected(alignment) {
+		if (this.selectedShapes.length < 2) return;
+		const baseShape = this.selectedShapes[0];
+		const baseWidth = this.calculateDimension(
+			baseShape.width,
+			this.canvas.width,
+			this.canvas.height
+		);
+		const baseHeight = this.calculateDimension(
+			baseShape.height,
+			this.canvas.height,
+			this.canvas.height
+		);
+
+		this.selectedShapes.slice(1).forEach((shape) => {
+			switch (alignment) {
+				case "left":
+					shape.x = baseShape.x;
+					break;
+				case "right":
+					shape.x =
+						baseShape.x +
+						baseWidth -
+						this.calculateDimension(
+							shape.width,
+							this.canvas.width,
+							this.canvas.height
+						);
+					break;
+				case "top":
+					shape.y = baseShape.y;
+					break;
+				case "bottom":
+					shape.y =
+						baseShape.y +
+						baseHeight -
+						this.calculateDimension(
+							shape.height,
+							this.canvas.height,
+							this.canvas.height
+						);
+					break;
+				case "centerX":
+					shape.x =
+						baseShape.x +
+						(baseWidth -
+							this.calculateDimension(
+								shape.width,
+								this.canvas.width,
+								this.canvas.height
+							)) /
+							2;
+					break;
+				case "centerY":
+					shape.y =
+						baseShape.y +
+						(baseHeight -
+							this.calculateDimension(
+								shape.height,
+								this.canvas.height,
+								this.canvas.height
+							)) /
+							2;
+					break;
+			}
+		});
+		this.state.addState([...this.shapes], `Align ${alignment}`);
+		this.redraw();
+	}
+
+	distributeSelected(direction) {
+		if (this.selectedShapes.length < 3) return;
+		this.selectedShapes.sort((a, b) =>
+			direction === "horizontal" ? a.x - b.x : a.y - b.y
+		);
+		const min =
+			direction === "horizontal"
+				? this.selectedShapes[0].x
+				: this.selectedShapes[0].y;
+		const max =
+			direction === "horizontal"
+				? this.selectedShapes[this.selectedShapes.length - 1].x +
+				  this.calculateDimension(
+						this.selectedShapes[this.selectedShapes.length - 1].width,
+						this.canvas.width,
+						this.canvas.height
+				  )
+				: this.selectedShapes[this.selectedShapes.length - 1].y +
+				  this.calculateDimension(
+						this.selectedShapes[this.selectedShapes.length - 1].height,
+						this.canvas.height,
+						this.canvas.height
+				  );
+		const step = (max - min) / (this.selectedShapes.length - 1);
+
+		this.selectedShapes.forEach((shape, index) => {
+			if (direction === "horizontal") {
+				shape.x = min + index * step;
+			} else {
+				shape.y = min + index * step;
+			}
+		});
+		this.state.addState([...this.shapes], `Distribute ${direction}`);
+		this.redraw();
+	}
+
+	// Templates
+	saveTemplate(name) {
+		this.templates.set(name, this.getElementsAsJson());
+	}
+
+	loadTemplate(name) {
+		const template = this.templates.get(name);
+		if (template) {
+			this.loadElementsFromJson(template);
+		}
+	}
+
 	initEventListeners() {
 		this.canvas.addEventListener("mousedown", this.handleMouseDown.bind(this));
 		this.canvas.addEventListener("mousemove", this.handleMouseMove.bind(this));
 		this.canvas.addEventListener("mouseup", this.handleMouseUp.bind(this));
-		if (!this.disableZoom) {
+		this.canvas.addEventListener("dblclick", this.handleDoubleClick.bind(this));
+		if (!this.disableZoom)
 			this.canvas.addEventListener("wheel", this.handleZoom.bind(this));
-		}
 		this.canvas.addEventListener("dragover", this.handleDragOver.bind(this));
 		this.canvas.addEventListener("drop", this.handleDrop.bind(this));
 		this.canvas.addEventListener("keydown", this.handleKeyDown.bind(this));
@@ -1091,23 +1358,21 @@ class CanvasManipulator {
 		} else if (shape) {
 			this.isDragging = true;
 			if (e.ctrlKey || e.metaKey) {
-				if (!this.selectedShapes.includes(shape)) {
+				if (!this.selectedShapes.includes(shape))
 					this.selectedShapes.push(shape);
-				}
 			} else {
 				this.selectedShapes = [shape];
 			}
 
-			// Interactivity for checkbox and selector
 			if (shape.type === "checkbox") {
 				shape.checked = !shape.checked;
-				this.state.addState([...this.shapes]);
+				this.state.addState([...this.shapes], "Toggle Checkbox");
 				this.redraw();
 			} else if (shape.type === "selector") {
 				const currentIndex = shape.options.indexOf(shape.selectedOption);
 				const nextIndex = (currentIndex + 1) % shape.options.length;
 				shape.selectedOption = shape.options[nextIndex];
-				this.state.addState([...this.shapes]);
+				this.state.addState([...this.shapes], "Change Selector Option");
 				this.redraw();
 			}
 		} else if (this.currentShape) {
@@ -1128,9 +1393,7 @@ class CanvasManipulator {
 				? this.createSpecialShape(this.currentShape, x, y)
 				: Promise.resolve(this.createShape(this.currentShape, x, y));
 			createShapePromise.then((newShape) => {
-				this.shapes.push(newShape);
-				this.state.addState([...this.shapes]);
-				this.redraw();
+				this.addShape(newShape);
 			});
 		} else {
 			this.selectedShapes = [];
@@ -1141,8 +1404,14 @@ class CanvasManipulator {
 	handleMouseMove(e) {
 		const { x, y } = this.getMousePos(e);
 
-		if (this.isRotating && this.selectedShapes[0]) {
-			const shape = this.selectedShapes[0];
+		// Update hover handle
+		const shape = this.selectedShapes[0];
+		if (shape) {
+			this.hoverHandle = this.getResizeHandle(x, y, shape);
+			this.redraw();
+		}
+
+		if (this.isRotating && shape) {
 			const centerX =
 				shape.x +
 				this.calculateDimension(
@@ -1162,8 +1431,7 @@ class CanvasManipulator {
 			const angle = (Math.atan2(y - centerY, x - centerX) * 180) / Math.PI;
 			shape.styles.transform = `rotate(${angle + 90}deg)`;
 			this.redraw();
-		} else if (this.isResizing && this.selectedShapes[0]) {
-			const shape = this.selectedShapes[0];
+		} else if (this.isResizing && shape) {
 			this.resizeShape(shape, x, y, this.resizeHandle);
 			this.restrictWithinBounds(shape);
 			this.redraw();
@@ -1173,6 +1441,10 @@ class CanvasManipulator {
 			this.selectedShapes.forEach((shape) => {
 				shape.x += dx;
 				shape.y += dy;
+				if (this.snapToGrid) {
+					shape.x = Math.round(shape.x / this.gridSize) * this.gridSize;
+					shape.y = Math.round(shape.y / this.gridSize) * this.gridSize;
+				}
 				this.restrictWithinBounds(shape);
 			});
 			this.startX = x;
@@ -1186,7 +1458,20 @@ class CanvasManipulator {
 		}
 	}
 
-	handleMouseUp() {
+	handleMouseUp(e) {
+		const { x, y } = this.getMousePos(e);
+		if (this.isDragging && this.selectedShapes.length) {
+			const target = this.findShapeAtPoint(x, y, true); // Exclude selected shapes
+			if (
+				target &&
+				["div", "scroll"].includes(target.type) &&
+				!this.selectedShapes.includes(target)
+			) {
+				this.selectedShapes.forEach((shape) =>
+					this.nestElement(target.id, shape.id)
+				);
+			}
+		}
 		if (
 			this.isDrawing ||
 			this.isDragging ||
@@ -1199,8 +1484,55 @@ class CanvasManipulator {
 			this.isRotating = false;
 			this.currentShape = null;
 			this.resizeHandle = null;
-			this.state.addState([...this.shapes]);
+			this.state.addState([...this.shapes], "Finish Interaction");
 		}
+		this.redraw();
+	}
+
+	handleDoubleClick(e) {
+		const { x, y } = this.getMousePos(e);
+		const shape = this.findShapeAtPoint(x, y);
+		if (shape && shape.type === "text") {
+			this.startTextEditing(shape);
+		}
+	}
+
+	startTextEditing(shape) {
+		const width = this.calculateDimension(
+			shape.width,
+			this.canvas.width,
+			this.canvas.height
+		);
+		const height = this.calculateDimension(
+			shape.height,
+			this.canvas.height,
+			this.canvas.height
+		);
+		const input = document.createElement("input");
+		input.type = "text";
+		input.value = shape.text || "";
+		input.style.position = "absolute";
+		input.style.left = `${this.canvas.offsetLeft + shape.x}px`;
+		input.style.top = `${this.canvas.offsetTop + shape.y}px`;
+		input.style.width = `${width}px`;
+		input.style.height = `${height}px`;
+		input.style.fontSize = shape.styles.fontSize;
+		input.style.fontFamily = shape.styles.fontFamily;
+		input.style.color = shape.styles.color;
+		document.body.appendChild(input);
+		input.focus();
+
+		const finishEditing = () => {
+			shape.text = input.value;
+			document.body.removeChild(input);
+			this.state.addState([...this.shapes], "Edit Text");
+			this.redraw();
+		};
+
+		input.addEventListener("blur", finishEditing);
+		input.addEventListener("keydown", (e) => {
+			if (e.key === "Enter") finishEditing();
+		});
 	}
 
 	handleZoom(e) {
@@ -1238,11 +1570,7 @@ class CanvasManipulator {
 			].includes(type)
 				? this.createSpecialShape(type, x, y)
 				: Promise.resolve(this.createShape(type, x, y));
-			createShapePromise.then((newShape) => {
-				this.shapes.push(newShape);
-				this.state.addState([...this.shapes]);
-				this.redraw();
-			});
+			createShapePromise.then((newShape) => this.addShape(newShape));
 		}
 	}
 
@@ -1266,7 +1594,6 @@ class CanvasManipulator {
 		}
 	}
 
-	// New scroll handler
 	handleScroll(e) {
 		const { x, y } = this.getMousePos(e);
 		const shape = this.findShapeAtPoint(x, y);
@@ -1326,6 +1653,7 @@ class CanvasManipulator {
 				)
 			);
 			this.scrollOffsets.set(shape.id, scrollOffset);
+			this.state.addState([...this.shapes], "Scroll");
 			this.redraw();
 		}
 	}
@@ -1338,9 +1666,10 @@ class CanvasManipulator {
 		};
 	}
 
-	findShapeAtPoint(x, y) {
+	findShapeAtPoint(x, y, excludeSelected = false) {
 		for (let i = this.shapes.length - 1; i >= 0; i--) {
 			const shape = this.shapes[i];
+			if (excludeSelected && this.selectedShapes.includes(shape)) continue;
 			if (this.isPointInShape(x, y, shape)) return shape;
 			if (shape.children) {
 				const nestedShape = this.findNestedShapeAtPoint(x, y, shape.children);
@@ -1547,9 +1876,9 @@ class CanvasManipulator {
 				return {
 					...baseProps,
 					points: [
-						{ x: x, y: y },
-						{ x: x + 200, y: y },
-						{ x: x + 100, y: y - 200 },
+						{ x: 0, y: 0 },
+						{ x: 200, y: 0 },
+						{ x: 100, y: -200 },
 					],
 				};
 			case "text":
@@ -1576,11 +1905,11 @@ class CanvasManipulator {
 			shape.width = `${radius * 2}px`;
 			shape.height = `${radius * 2}px`;
 		} else if (shape.type === "triangle") {
-			shape.points[1].x = x;
-			shape.points[2].x = shape.x + (x - shape.x) / 2;
-			shape.points[2].y = y;
+			shape.points[1].x = x - shape.x;
+			shape.points[2].x = (x - shape.x) / 2;
+			shape.points[2].y = y - shape.y;
 			shape.width = `${x - shape.x}px`;
-			shape.height = `${shape.y - y}px`;
+			shape.height = `${Math.abs(y - shape.y)}px`;
 		} else {
 			shape.width = `${x - shape.x}px`;
 			shape.height = `${y - shape.y}px`;
@@ -1598,24 +1927,3 @@ class CanvasManipulator {
 		return null;
 	}
 }
-
-// Usage example:
-/*
-const canvas = document.createElement('canvas');
-document.body.appendChild(canvas);
-const cm = new CanvasManipulator(canvas, {
-    width: 800,
-    height: 600,
-    backgroundColor: '#f5f5f5',
-    showOverlay: true
-});
-cm.startDrawing('scroll');
-// After drawing, nest elements
-const scrollShape = cm.shapes[cm.shapes.length - 1];
-const child1 = await cm.createSpecialShape('button', 0, 0);
-const child2 = await cm.createSpecialShape('checkbox', 0, 0);
-cm.nestElement(scrollShape.id, child1.id);
-cm.nestElement(scrollShape.id, child2.id);
-cm.updateShapeProperty(scrollShape.id, 'scrollDirection', 'column');
-console.log(cm.getAcceptedTypes());
-*/

@@ -89,6 +89,12 @@
                 <button onclick="canvasManipulator.redo()">Redo</button>
                 <button onclick="canvasManipulator.clearCanvas()">Clear</button>
                 <button onclick="exportCanvas()">Export PNG</button>
+            <button onclick="canvasManipulator.exportCanvas('svg')">Export SVG</button>
+            <button onclick="canvasManipulator.exportCanvas('html')">Export HTML</button>
+            <input type="number" id="grid-size" value="10" min="5" onchange="canvasManipulator.setGridSize(this.value)">
+            <button onclick="canvasManipulator.toggleSnapToGrid()">Toggle Grid</button>
+            <button onclick="canvasManipulator.alignSelected('left')">Align Left</button>
+            <button onclick="canvasManipulator.distributeSelected('horizontal')">Distribute Horizontally</button>
             </div>
             <canvas id="canvas"></canvas>
         </div>
