@@ -79,6 +79,8 @@
             <div class="element" draggable="true" data-type="image">Image</div>
             <div class="element" draggable="true" data-type="video">Video</div>
             <div class="element" draggable="true" data-type="scroll">Scroll</div>
+            <div class="element" draggable="true" data-type="board">Board</div>
+            <div class="element" draggable="true" data-type="path">Path</div>
         </div>
 
         <!-- Main canvas area -->
@@ -88,13 +90,20 @@
                 <button onclick="canvasManipulator.undo()">Undo</button>
                 <button onclick="canvasManipulator.redo()">Redo</button>
                 <button onclick="canvasManipulator.clearCanvas()">Clear</button>
-                <button onclick="exportCanvas()">Export PNG</button>
-            <button onclick="canvasManipulator.exportCanvas('svg')">Export SVG</button>
-            <button onclick="canvasManipulator.exportCanvas('html')">Export HTML</button>
-            <input type="number" id="grid-size" value="10" min="5" onchange="canvasManipulator.setGridSize(this.value)">
-            <button onclick="canvasManipulator.toggleSnapToGrid()">Toggle Grid</button>
-            <button onclick="canvasManipulator.alignSelected('left')">Align Left</button>
-            <button onclick="canvasManipulator.distributeSelected('horizontal')">Distribute Horizontally</button>
+                <button onclick="exportCanvas('png')">Export PNG</button>
+                <button onclick="exportCanvas('svg')">Export SVG</button>
+                <button onclick="exportCanvas('html')">Export HTML</button>
+                <button onclick="exportCanvas('react')">Export React</button>
+                <input type="number" id="grid-size" value="10" min="5"
+                    onchange="canvasManipulator.setGridSize(this.value)">
+                <button onclick="canvasManipulator.toggleSnapToGrid()">Toggle Grid</button>
+                <button onclick="canvasManipulator.alignSelected('left')">Align Left</button>
+                <button onclick="canvasManipulator.alignSelected('centerX')">Align Center</button>
+                <button onclick="canvasManipulator.distributeSelected('horizontal')">Distribute Horizontally</button>
+                <button onclick="canvasManipulator.addGuide('horizontal', 100)">Add Horizontal Guide</button>
+                <button onclick="canvasManipulator.detectCollisions().length && alert('Collisions detected!')">Check
+                    Collisions</button>
+                <button onclick="toggleZoomPan()">Toggle Zoom/Pan</button>
             </div>
             <canvas id="canvas"></canvas>
         </div>
@@ -124,7 +133,8 @@
                         onchange="updateSelectedProperty('width', this.value)"></label>
                 <label>Height: <input type="text" id="setting-height"
                         onchange="updateSelectedProperty('height', this.value)"></label>
-                <label>Background Color: <input type="color" id="setting-bg"
+                <label>Background: <input type="text" id="setting-bg"
+                        placeholder="e.g., #aabbcc or linear-gradient(#fff, #000)"
                         onchange="updateSelectedProperty('backgroundColor', this.value)"></label>
                 <label>Border Color: <input type="color" id="setting-border"
                         onchange="updateSelectedProperty('borderColor', this.value)"></label>
@@ -146,7 +156,11 @@
                         <option value="row">Row</option>
                         <option value="column">Column</option>
                     </select></label>
+                <label>Event (onClick): <input type="text" id="setting-event" placeholder="alert('Clicked')"
+                        onchange="updateEvent('onClick', this.value)"></label>
                 <button onclick="demoNestElement()">Nest Demo Element</button>
+                <button onclick="saveAsComponent()">Save as Component</button>
+                <button onclick="cloneComponent()">Clone Component</button>
             </div>
         </div>
     </div>
@@ -165,6 +179,7 @@
         document.querySelectorAll('.element').forEach(element => {
             element.addEventListener('dragstart', (e) => {
                 e.dataTransfer.setData('type', e.target.dataset.type);
+                canvasManipulator.startDrawing(e.target.dataset.type); // Start drawing mode
             });
         });
 
@@ -172,7 +187,8 @@
         function updateShapeSelect() {
             const select = document.getElementById('shape-select');
             select.innerHTML = '';
-            canvasManipulator.getElementsAsJson().forEach(shape => {
+            const shapes = canvasManipulator.getElementsAsJson();
+            shapes.forEach(shape => {
                 const option = document.createElement('option');
                 option.value = shape.id;
                 option.textContent = `${shape.type} (${shape.id})`;
@@ -226,11 +242,12 @@
             }
         }
 
-        function exportCanvas() {
-            const dataUrl = canvasManipulator.exportCanvas('png');
+        // Export canvas in various formats
+        function exportCanvas(format = 'png') {
+            const dataUrl = canvasManipulator.exportCanvas(format);
             const link = document.createElement('a');
-            link.download = 'canvas.png';
-            link.href = dataUrl;
+            link.download = `canvas.${format === 'react' ? 'jsx' : format}`;
+            link.href = format === 'react' ? 'data:text/plain;base64,' + btoa(dataUrl) : dataUrl;
             link.click();
         }
 
@@ -251,6 +268,7 @@
             document.getElementById('setting-checked').checked = selectedShape.checked || false;
             document.getElementById('setting-option').value = selectedShape.selectedOption || '';
             document.getElementById('setting-scroll').value = selectedShape.scrollDirection || 'column';
+            document.getElementById('setting-event').value = selectedShape.events?.onClick || '';
         }
 
         // Update selected shape property
@@ -259,30 +277,70 @@
             if (selectedShape) {
                 if (['x', 'y'].includes(property)) {
                     canvasManipulator.updateShapeProperty(selectedShape.id, property, parseFloat(value));
-                } else if (['width', 'height'].includes(property)) {
+                } else if (['width', 'height', 'backgroundColor', 'borderColor', 'opacity', 'flexDirection', 'text', 'selectedOption', 'scrollDirection'].includes(property)) {
                     canvasManipulator.updateShapeProperty(selectedShape.id, property, value);
-                } else if (['backgroundColor', 'borderColor', 'opacity', 'flexDirection'].includes(property)) {
-                    canvasManipulator.updateShapeProperty(selectedShape.id, property, value);
-                } else {
-                    canvasManipulator.updateShapeProperty(selectedShape.id, property, value);
+                } else if (property === 'checked') {
+                    canvasManipulator.updateShapeProperty(selectedShape.id, property, !!value);
                 }
                 canvasManipulator.redraw();
+            }
+        }
+
+        // Add an event to the selected shape
+        function updateEvent(eventType, action) {
+            const selectedShape = canvasManipulator.selectedShapes[0];
+            if (selectedShape) {
+                canvasManipulator.addEvent(selectedShape.id, eventType, action);
+                updateSettingsPanel();
             }
         }
 
         // Demo nesting function
         async function demoNestElement() {
             const selectedShape = canvasManipulator.selectedShapes[0];
-            if (!selectedShape) {
-                alert('Please select a shape first!');
+            if (!selectedShape || !['div', 'scroll', 'board'].includes(selectedShape.type)) {
+                alert('Please select a div, scroll, or board to nest into!');
                 return;
             }
 
-            // Create a demo button as a child
             const childShape = await canvasManipulator.createSpecialShape('button', 10, 10);
             canvasManipulator.addShape(childShape);
             canvasManipulator.nestElement(selectedShape.id, childShape.id);
             updateShapeSelect();
+        }
+
+        // Save selected shape as a component
+        function saveAsComponent() {
+            const selectedShape = canvasManipulator.selectedShapes[0];
+            if (!selectedShape) {
+                alert('Please select a shape to save as a component!');
+                return;
+            }
+            const name = prompt('Enter component name:');
+            if (name) {
+                canvasManipulator.createComponent(name, selectedShape);
+                alert(`Component "${name}" saved!`);
+            }
+        }
+
+        // Clone a component
+        function cloneComponent() {
+            const name = prompt('Enter component name to clone:');
+            if (name && canvasManipulator.components.has(name)) {
+                const { x, y } = canvasManipulator.selectedShapes[0] || { x: 50, y: 50 };
+                canvasManipulator.cloneComponent(name, x + 20, y + 20);
+                updateShapeSelect();
+            } else {
+                alert('Component not found!');
+            }
+        }
+
+        // Toggle zoom and pan controls
+        let zoomPanEnabled = true;
+        function toggleZoomPan() {
+            zoomPanEnabled = !zoomPanEnabled;
+            canvasManipulator.disableZoom = !zoomPanEnabled;
+            alert(`Zoom/Pan ${zoomPanEnabled ? 'enabled' : 'disabled'}`);
         }
 
         // Initial setup
