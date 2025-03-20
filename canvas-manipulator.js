@@ -1,165 +1,158 @@
 // Default styles applied to new shapes
 const AdvancedStyles = {
-    display: "block",
-    position: "absolute",
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-    float: "none",
-    clear: "none",
-    zIndex: 0,
-    width: "50px",
-    height: "50px",
-    maxWidth: "none",
-    maxHeight: "none",
-    minWidth: "10px",
-    minHeight: "10px",
-    boxSizing: "border-box",
-    margin: 0,
-    padding: 0,
-    border: "1px solid #000",
-    borderWidth: "1px",
-    borderStyle: "solid",
-    borderColor: "#000",
-    borderRadius: 0,
-    backgroundColor: "#aabbcc",
-    backgroundImage: "none",
-    backgroundSize: "cover",
-    backgroundPosition: "center",
-    backgroundRepeat: "no-repeat",
-    color: "#000000",
-    fontFamily: "Arial",
-    fontSize: "16px",
-    fontWeight: "normal",
-    fontStyle: "normal",
-    lineHeight: "normal",
-    letterSpacing: "normal",
-    textAlign: "left",
-    opacity: 1,
-    boxShadow: "2px 2px 4px rgba(0,0,0,0.2)",
-    transform: "none",
-    flexDirection: "row",
-    flexWrap: "nowrap",
-    justifyContent: "flex-start",
-    alignItems: "flex-start",
-    gridTemplateColumns: "auto",
-    gridTemplateRows: "auto",
-    gap: "0px",
-    overflow: "hidden",
-    stroke: "#000",
-    strokeWidth: "2px",
+	display: "block",
+	position: "absolute",
+	top: 0,
+	right: 0,
+	bottom: 0,
+	left: 0,
+	float: "none",
+	clear: "none",
+	zIndex: 0,
+	width: "50px",
+	height: "50px",
+	maxWidth: "none",
+	maxHeight: "none",
+	minWidth: "10px",
+	minHeight: "10px",
+	boxSizing: "border-box",
+	margin: 0,
+	padding: 0,
+	border: "1px solid #000",
+	borderWidth: "1px",
+	borderStyle: "solid",
+	borderColor: "#000",
+	borderRadius: 0,
+	backgroundColor: "#aabbcc",
+	backgroundImage: "none",
+	backgroundSize: "cover",
+	backgroundPosition: "center",
+	backgroundRepeat: "no-repeat",
+	color: "#000000",
+	fontFamily: "Arial",
+	fontSize: "16px",
+	fontWeight: "normal",
+	fontStyle: "normal",
+	lineHeight: "normal",
+	letterSpacing: "normal",
+	textAlign: "left",
+	opacity: 1,
+	boxShadow: "2px 2px 4px rgba(0,0,0,0.2)",
+	transform: "none",
+	flexDirection: "row",
+	flexWrap: "nowrap",
+	justifyContent: "flex-start",
+	alignItems: "flex-start",
+	gridTemplateColumns: "auto",
+	gridTemplateRows: "auto",
+	gap: "0px",
+	overflow: "hidden",
+	stroke: "#000",
+	strokeWidth: "2px",
 };
 
 // State management class with enhanced history tracking and scope control
 class StateManager {
-    constructor(key) {
-        this.key = key; // LocalStorage key for persistence
-        this.history = []; // Array of state snapshots
-        this.currentIndex = -1; // Current position in history
-        this.batchSize = 100; // Limit history size
-        this.scope = []; // Temporary scope for grouping actions
-    }
+	constructor(key) {
+		this.key = key;
+		this.history = [];
+		this.currentIndex = -1;
+		this.batchSize = 100;
+		this.scope = [];
+	}
 
-    // Start a scope to group multiple actions into one undo/redo step
-    beginScope() {
-        this.scope = [];
-    }
+	beginScope() {
+		this.scope = [];
+	}
 
-    // End a scope and commit it as a single history entry
-    endScope(actionDescription) {
-        if (this.scope.length) {
-            this.addState(this.scope[this.scope.length - 1], actionDescription);
-            this.scope = [];
-        }
-    }
+	endScope(actionDescription) {
+		if (this.scope.length) {
+			this.addState(this.scope[this.scope.length - 1], actionDescription);
+			this.scope = [];
+		}
+	}
 
-    // Add a state to history (or scope if active)
-    addState(state, actionDescription = "Unknown Action") {
-        if (this.scope.length) {
-            this.scope.push(this.cloneState(state));
-            return;
-        }
-        if (this.currentIndex < this.history.length - 1) {
-            this.history = this.history.slice(0, this.currentIndex + 1); // Trim future states
-        }
-        this.history.push({ state: this.cloneState(state), action: actionDescription });
-        this.currentIndex++;
-        if (this.history.length > this.batchSize) {
-            this.history.shift(); // Remove oldest entry
-            this.currentIndex--;
-        }
-        localStorage.setItem(this.key, JSON.stringify(this.history));
-    }
+	addState(state, actionDescription = "Unknown Action") {
+		if (this.scope.length) {
+			this.scope.push(this.cloneState(state));
+			return;
+		}
+		if (this.currentIndex < this.history.length - 1) {
+			this.history = this.history.slice(0, this.currentIndex + 1);
+		}
+		this.history.push({
+			state: this.cloneState(state),
+			action: actionDescription,
+		});
+		this.currentIndex++;
+		if (this.history.length > this.batchSize) {
+			this.history.shift();
+			this.currentIndex--;
+		}
+		localStorage.setItem(this.key, JSON.stringify(this.history));
+	}
 
-    // Undo to previous state
-    undo() {
-        if (this.currentIndex > 0) {
-            this.currentIndex--;
-            return this.cloneState(this.history[this.currentIndex].state);
-        }
-        return null;
-    }
+	undo() {
+		if (this.currentIndex > 0) {
+			this.currentIndex--;
+			return this.cloneState(this.history[this.currentIndex].state);
+		}
+		return null;
+	}
 
-    // Redo to next state
-    redo() {
-        if (this.currentIndex < this.history.length - 1) {
-            this.currentIndex++;
-            return this.cloneState(this.history[this.currentIndex].state);
-        }
-        return null;
-    }
+	redo() {
+		if (this.currentIndex < this.history.length - 1) {
+			this.currentIndex++;
+			return this.cloneState(this.history[this.currentIndex].state);
+		}
+		return null;
+	}
 
-    // Load saved state from localStorage
-    load() {
-        const saved = localStorage.getItem(this.key);
-        if (saved) {
-            this.history = JSON.parse(saved);
-            this.currentIndex = this.history.length - 1;
-            return this.cloneState(this.history[this.currentIndex].state);
-        }
-        return null;
-    }
+	load() {
+		const saved = localStorage.getItem(this.key);
+		if (saved) {
+			this.history = JSON.parse(saved);
+			this.currentIndex = this.history.length - 1;
+			return this.cloneState(this.history[this.currentIndex].state);
+		}
+		return null;
+	}
 
-    // Clear saved state
-    clear() {
-        localStorage.removeItem(this.key);
-    }
+	clear() {
+		localStorage.removeItem(this.key);
+	}
 
-    // Get history for UI display
-    getHistory() {
-        return this.history.map((entry, index) => ({
-            index,
-            action: entry.action,
-            isCurrent: index === this.currentIndex
-        }));
-    }
+	getHistory() {
+		return this.history.map((entry, index) => ({
+			index,
+			action: entry.action,
+			isCurrent: index === this.currentIndex,
+		}));
+	}
 
-    // Deep clone a state to avoid reference issues
-    cloneState(state) {
-        return state.map(shape => {
-            const newShape = { ...shape };
-            if (newShape.children) newShape.children = this.cloneState(newShape.children);
-            if (newShape.styles) newShape.styles = { ...newShape.styles };
-            if (newShape.frames) newShape.frames = [...newShape.frames];
-            if (newShape.events) newShape.events = { ...newShape.events };
-            if (newShape.componentRef) newShape.componentRef = shape.componentRef; // Reference, not cloned
-            return newShape;
-        });
-    }
+	cloneState(state) {
+		return state.map((shape) => {
+			const newShape = { ...shape };
+			if (newShape.children)
+				newShape.children = this.cloneState(newShape.children);
+			if (newShape.styles) newShape.styles = { ...newShape.styles };
+			if (newShape.frames) newShape.frames = [...newShape.frames];
+			if (newShape.events) newShape.events = { ...newShape.events };
+			if (newShape.componentRef) newShape.componentRef = shape.componentRef;
+			return newShape;
+		});
+	}
 }
 
 // Main canvas manipulation class
 class CanvasManipulator {
 	constructor(canvasIdOrElement, settings = {}) {
-		// Initialize canvas and context
 		this.canvas =
 			typeof canvasIdOrElement === "string"
 				? document.getElementById(canvasIdOrElement) || this.createCanvas()
 				: canvasIdOrElement;
 		this.ctx = this.canvas.getContext("2d");
 
-		// State and interaction flags
 		this.state = new StateManager("canvasState");
 		this.isDrawing = false;
 		this.isDragging = false;
@@ -173,7 +166,8 @@ class CanvasManipulator {
 		this.startY = 0;
 		this.resizeHandle = null;
 
-		// Settings and UI controls
+		this.mediaCache = new Map();
+
 		this.showOverlay =
 			settings.showOverlay !== undefined ? settings.showOverlay : false;
 		this.disableZoom =
@@ -181,9 +175,12 @@ class CanvasManipulator {
 		this.gridSize = settings.gridSize || 10;
 		this.snapToGrid =
 			settings.snapToGrid !== undefined ? settings.snapToGrid : true;
-		this.scale = 1; // Zoom level
-		this.panX = 0; // Pan offset X
-		this.panY = 0; // Pan offset Y
+		this.showGrid = settings.showGrid !== undefined ? settings.showGrid : false; // New flag for grid
+		this.showRulers =
+			settings.showRulers !== undefined ? settings.showRulers : false; // New flag for rulers
+		this.scale = 1;
+		this.panX = 0;
+		this.panY = 0;
 		this.settings = {
 			width: settings.width || 800,
 			height: settings.height || 600,
@@ -191,41 +188,37 @@ class CanvasManipulator {
 			...settings,
 		};
 
-		// Additional data structures
-		this.animationFrames = new Map(); // Animation frame IDs
-		this.currentFrameIndex = new Map(); // Current animation frame
-		this.pausedAnimations = new Set(); // Paused animations
-		this.scrollOffsets = new Map(); // Scroll offsets for scrollable elements
-		this.hoverHandle = null; // Handle under mouse
-		this.templates = new Map(); // Saved templates
-		this.components = new Map(); // Reusable components
-		this.layersVisible = new Map(); // Layer visibility
-		this.guides = []; // Custom guides
-		this.pathPoints = []; // Points for path drawing
+		this.animationFrames = new Map();
+		this.currentFrameIndex = new Map();
+		this.pausedAnimations = new Set();
+		this.scrollOffsets = new Map();
+		this.hoverHandle = null;
+		this.templates = new Map();
+		this.components = new Map();
+		this.layersVisible = new Map();
+		this.guides = [];
+		this.pathPoints = [];
 
-		// Set canvas dimensions and focus
 		this.canvas.width = this.settings.width;
 		this.canvas.height = this.settings.height;
 		this.canvas.tabIndex = 0;
+		this.editingShape = null; // Track the shape being edited
+		this.cursorPos = 0; // Track cursor position in text
 
-		// Load saved state
 		const savedState = this.state.load();
 		if (savedState) this.shapes = savedState;
 
-		// Initialize event listeners and redraw
 		this.initEventListeners();
 		this.redraw();
 		window.addEventListener("beforeunload", () => this.state.clear());
 	}
 
-	// Create a new canvas if none provided
 	createCanvas() {
 		const canvas = document.createElement("canvas");
 		document.body.appendChild(canvas);
 		return canvas;
 	}
 
-	// Calculate dimensions based on units (px, %, vh, vw)
 	calculateDimension(value, parentDimension, viewportDimension) {
 		if (value === "auto") return parentDimension;
 		if (value.endsWith("%")) return (parseFloat(value) / 100) * parentDimension;
@@ -236,12 +229,10 @@ class CanvasManipulator {
 		return parseFloat(value) || 0;
 	}
 
-	// Get canvas element
 	getCanvas() {
 		return this.canvas;
 	}
 
-	// Find shape by ID, including nested ones
 	getElementById(id) {
 		return (
 			this.shapes.find((s) => s.id === id) ||
@@ -249,7 +240,6 @@ class CanvasManipulator {
 		);
 	}
 
-	// Export canvas in various formats
 	exportCanvas(format = "png", quality = 0.92) {
 		if (format === "svg") return this.exportToSVG();
 		if (format === "html") return this.exportToHTML();
@@ -257,7 +247,6 @@ class CanvasManipulator {
 		return this.canvas.toDataURL(`image/${format}`, quality);
 	}
 
-	// Export to SVG
 	exportToSVG() {
 		let svg = `<svg width="${this.canvas.width}" height="${this.canvas.height}" xmlns="http://www.w3.org/2000/svg">`;
 		this.shapes.forEach((shape) => {
@@ -267,7 +256,6 @@ class CanvasManipulator {
 		return "data:image/svg+xml;base64," + btoa(svg);
 	}
 
-	// Convert shape to SVG
 	shapeToSVG(shape, parentX = 0, parentY = 0) {
 		const x = shape.x + parentX;
 		const y = shape.y + parentY;
@@ -310,7 +298,6 @@ class CanvasManipulator {
 		return svg;
 	}
 
-	// Export to HTML
 	exportToHTML() {
 		let html = `<div style="width:${this.canvas.width}px;height:${this.canvas.height}px;background:${this.settings.backgroundColor};position:relative;">`;
 		this.shapes.forEach((shape) => {
@@ -320,7 +307,6 @@ class CanvasManipulator {
 		return html;
 	}
 
-	// Convert shape to HTML
 	shapeToHTML(shape, parentX = 0, parentY = 0) {
 		const x = shape.x + parentX;
 		const y = shape.y + parentY;
@@ -344,7 +330,6 @@ class CanvasManipulator {
 		return html;
 	}
 
-	// Export to React component
 	exportToReact() {
 		let code = `import React from 'react';\n\nconst CanvasComponent = () => (\n  <div style={{ width: '${this.canvas.width}px', height: '${this.canvas.height}px', background: '${this.settings.backgroundColor}', position: 'relative' }}>\n`;
 		this.shapes.forEach((shape) => {
@@ -354,7 +339,6 @@ class CanvasManipulator {
 		return code;
 	}
 
-	// Convert shape to React JSX
 	shapeToReact(shape, parentX = 0, parentY = 0) {
 		const x = shape.x + parentX;
 		const y = shape.y + parentY;
@@ -387,19 +371,17 @@ class CanvasManipulator {
 		return jsx;
 	}
 
-	// Redraw the canvas with all elements
 	redraw() {
 		this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 		this.ctx.fillStyle = this.settings.backgroundColor;
 		this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-		// Apply zoom and pan transformations
 		this.ctx.save();
 		this.ctx.translate(this.panX, this.panY);
 		this.ctx.scale(this.scale, this.scale);
 
-		// Draw grid if enabled
-		if (this.snapToGrid) {
+		if (this.showGrid && this.snapToGrid) {
+			// Grid rendering
 			this.ctx.strokeStyle = "#ddd";
 			this.ctx.lineWidth = 0.5 / this.scale;
 			for (let x = 0; x < this.canvas.width; x += this.gridSize) {
@@ -416,26 +398,27 @@ class CanvasManipulator {
 			}
 		}
 
-		// Draw rulers
-		this.ctx.strokeStyle = "#000";
-		this.ctx.lineWidth = 1 / this.scale;
-		this.ctx.beginPath();
-		this.ctx.moveTo(0, 20);
-		this.ctx.lineTo(this.canvas.width, 20);
-		this.ctx.moveTo(20, 0);
-		this.ctx.lineTo(20, this.canvas.height);
-		this.ctx.stroke();
-		for (let i = 0; i < this.canvas.width; i += 50) {
-			this.ctx.moveTo(i, 15);
-			this.ctx.lineTo(i, 20);
+		if (this.showRulers) {
+			// Ruler rendering
+			this.ctx.strokeStyle = "#000";
+			this.ctx.lineWidth = 1 / this.scale;
+			this.ctx.beginPath();
+			this.ctx.moveTo(0, 20);
+			this.ctx.lineTo(this.canvas.width, 20);
+			this.ctx.moveTo(20, 0);
+			this.ctx.lineTo(20, this.canvas.height);
+			this.ctx.stroke();
+			for (let i = 0; i < this.canvas.width; i += 50) {
+				this.ctx.moveTo(i, 15);
+				this.ctx.lineTo(i, 20);
+			}
+			for (let i = 0; i < this.canvas.height; i += 50) {
+				this.ctx.moveTo(15, i);
+				this.ctx.lineTo(20, i);
+			}
+			this.ctx.stroke();
 		}
-		for (let i = 0; i < this.canvas.height; i += 50) {
-			this.ctx.moveTo(15, i);
-			this.ctx.lineTo(20, i);
-		}
-		this.ctx.stroke();
 
-		// Draw guides
 		this.guides.forEach((guide) => {
 			this.ctx.strokeStyle = "#00f";
 			this.ctx.beginPath();
@@ -449,12 +432,10 @@ class CanvasManipulator {
 			this.ctx.stroke();
 		});
 
-		// Draw shapes
 		this.shapes.forEach((shape) => {
 			if (this.isLayerVisible(shape.id)) this.drawShape(shape);
 		});
 
-		// Draw selection overlay
 		if (this.showOverlay && this.selectedShapes.length) {
 			this.selectedShapes.forEach((shape) => this.drawSelection(shape));
 		}
@@ -462,7 +443,6 @@ class CanvasManipulator {
 		this.ctx.restore();
 	}
 
-	// Clear the canvas
 	clearCanvas() {
 		this.shapes = [];
 		this.selectedShapes = [];
@@ -476,24 +456,77 @@ class CanvasManipulator {
 		this.redraw();
 	}
 
-	// Start drawing a new shape
+	toggleGrid() {
+		this.showGrid = !this.showGrid;
+		this.redraw();
+	}
+
+	toggleRulers() {
+		this.showRulers = !this.showRulers;
+		this.redraw();
+	}
+
+	setGridVisibility(show) {
+		this.showGrid = show;
+		this.redraw();
+	}
+
+	setRulersVisibility(show) {
+		this.showRulers = show;
+		this.redraw();
+	}
+
 	startDrawing(type) {
 		this.currentShape = type;
 	}
 
-	// Delete selected shapes
-	deleteSelected() {
-		if (this.selectedShapes.length) {
-			this.selectedShapes.forEach((shape) => {
-				this.shapes = this.shapes.filter((s) => s.id !== shape.id);
-			});
-			this.selectedShapes = [];
-			this.state.addState([...this.shapes], "Delete Selected");
-			this.redraw();
+	startDirectTextEditing(shape) {
+		this.editingShape = shape;
+		this.cursorPos = shape.text ? shape.text.length : 0; // Start at end of text
+		this.canvas.focus();
+		this.redraw();
+	}
+
+	onCanvasClick(e) {
+		const rect = this.canvas.getBoundingClientRect();
+		const x = e.clientX - rect.left;
+		const y = e.clientY - rect.top;
+
+		// Find clicked shape
+		const clickedShape = this.shapes.find((shape) => {
+			const width = this.calculateDimension(
+				shape.width,
+				this.canvas.width,
+				this.canvas.height
+			);
+			const height = this.calculateDimension(
+				shape.height,
+				this.canvas.width,
+				this.canvas.height
+			);
+			return (
+				x >= shape.x &&
+				x <= shape.x + width &&
+				y >= shape.y &&
+				y <= shape.y + height &&
+				(shape.type === "text" || shape.type === "input")
+			);
+		});
+
+		if (clickedShape) {
+			this.startDirectTextEditing(clickedShape);
 		}
 	}
 
-	// Update a shape property
+	deleteSelected() {
+		if (this.selectedShapes.length) {
+			this.shapes = this.shapes.filter((s) => !this.selectedShapes.includes(s));
+			this.selectedShapes = [];
+			this.state.addState([...this.shapes], "Delete Selected"); // Immediate state update
+			this.redraw(); // Immediate redraw
+		}
+	}
+
 	updateShapeProperty(id, property, value) {
 		const shape = this.getElementById(id);
 		if (shape) {
@@ -512,7 +545,6 @@ class CanvasManipulator {
 		}
 	}
 
-	// Add a new shape
 	addShape(shape, parentId = null) {
 		shape.id = shape.id || `shape_${Date.now()}`;
 		shape.styles = { ...AdvancedStyles, ...shape.styles };
@@ -533,12 +565,10 @@ class CanvasManipulator {
 		this.redraw();
 	}
 
-	// Copy selected shapes to clipboard
 	copySelected() {
 		this.clipboard = this.selectedShapes.map((shape) => ({ ...shape }));
 	}
 
-	// Paste clipboard contents
 	pasteClipboard() {
 		const newElements = this.clipboard.map((shape) => {
 			const newShape = { ...shape, id: `shape_${Date.now()}` };
@@ -552,7 +582,6 @@ class CanvasManipulator {
 		this.redraw();
 	}
 
-	// Nest an element into a parent
 	nestElement(parentId, childId) {
 		const parent = this.getElementById(parentId);
 		const child = this.getElementById(childId);
@@ -573,7 +602,6 @@ class CanvasManipulator {
 		}
 	}
 
-	// Group selected elements
 	groupElements(elementIds) {
 		const group = this.createShape("group", 0, 0);
 		const elements = this.shapes.filter((s) => elementIds.includes(s.id));
@@ -618,7 +646,6 @@ class CanvasManipulator {
 		this.redraw();
 	}
 
-	// Animate an element
 	animateElement(id) {
 		const shape = this.getElementById(id);
 		if (!shape || !shape.frames || !shape.frames.length) return;
@@ -628,7 +655,6 @@ class CanvasManipulator {
 		this.playAnimation(id);
 	}
 
-	// Play animation for an element
 	playAnimation(id) {
 		const shape = this.getElementById(id);
 		if (!shape || !shape.frames || !shape.frames.length) return;
@@ -661,12 +687,10 @@ class CanvasManipulator {
 		this.animationFrames.set(id, frameId);
 	}
 
-	// Pause animation
 	pauseAnimation(id) {
 		if (this.animationFrames.has(id)) this.pausedAnimations.add(id);
 	}
 
-	// Stop animation
 	stopAnimation(id) {
 		const frameId = this.animationFrames.get(id);
 		if (frameId) {
@@ -676,21 +700,18 @@ class CanvasManipulator {
 		}
 	}
 
-	// Undo last action
 	undo() {
 		this.shapes = this.state.undo() || [];
 		this.selectedShapes = [];
 		this.redraw();
 	}
 
-	// Redo last undone action
 	redo() {
 		this.shapes = this.state.redo() || [];
 		this.selectedShapes = [];
 		this.redraw();
 	}
 
-	// Save canvas to JSON file
 	saveToJsonFile(filename = "canvas.json") {
 		const dataStr = JSON.stringify(this.shapes);
 		const blob = new Blob([dataStr], { type: "application/json" });
@@ -702,7 +723,6 @@ class CanvasManipulator {
 		URL.revokeObjectURL(url);
 	}
 
-	// Import from JSON file
 	importFromJsonFile(file) {
 		return new Promise((resolve) => {
 			const reader = new FileReader();
@@ -714,7 +734,6 @@ class CanvasManipulator {
 		});
 	}
 
-	// Get elements as JSON
 	getElementsAsJson() {
 		const cloneShapes = (shapes) =>
 			shapes.map((shape) => {
@@ -727,7 +746,6 @@ class CanvasManipulator {
 		return cloneShapes(this.shapes);
 	}
 
-	// Load elements from JSON
 	loadElementsFromJson(jsonData) {
 		let shapes = Array.isArray(jsonData) ? jsonData : JSON.parse(jsonData);
 		this.shapes = [];
@@ -749,7 +767,6 @@ class CanvasManipulator {
 		this.redraw();
 	}
 
-	// Center children in parent
 	centerChildrenInParent(parentId) {
 		const parent = this.getElementById(parentId);
 		if (!parent || !parent.children?.length) return;
@@ -773,7 +790,7 @@ class CanvasManipulator {
 			);
 			const childHeight = this.calculateDimension(
 				child.height,
-				parentHeight,
+				parentWidth,
 				parentHeight
 			);
 			child.x = (parentWidth - childWidth) / 2;
@@ -784,7 +801,6 @@ class CanvasManipulator {
 		this.redraw();
 	}
 
-	// Get accepted shape types
 	getAcceptedTypes() {
 		return [
 			{ type: "rectangle", width: "200px", height: "200px" },
@@ -842,7 +858,6 @@ class CanvasManipulator {
 		];
 	}
 
-	// Create special shapes with file inputs or specific properties
 	createSpecialShape(type, x, y) {
 		const id = Date.now().toString();
 		const baseProps = {
@@ -1028,7 +1043,45 @@ class CanvasManipulator {
 		});
 	}
 
-	// Draw a shape on the canvas
+	wrapText(text, x, y, maxWidth, maxHeight) {
+		if (!text) return;
+		const words = text.split(" ");
+		let line = "";
+		let currentY = y;
+		const lineHeight =
+			parseFloat(this.ctx.font.match(/\d+px/)?.[0] || "16px") * 1.2;
+
+		// Save context and apply clipping to exact shape bounds
+		this.ctx.save();
+		this.ctx.beginPath();
+		this.ctx.rect(x, y, maxWidth, maxHeight); // Clip strictly to shape bounds
+		this.ctx.clip();
+
+		// Use top baseline for consistent positioning
+		this.ctx.textBaseline = "top";
+
+		for (let n = 0; n < words.length; n++) {
+			const testLine = line + words[n] + " ";
+			const testWidth = this.ctx.measureText(testLine).width;
+			if (testWidth > maxWidth && line.length > 0) {
+				// Only draw if the line fits within maxHeight
+				if (currentY + lineHeight <= y + maxHeight) {
+					this.ctx.fillText(line.trim(), x, currentY);
+				}
+				line = words[n] + " ";
+				currentY += lineHeight;
+			} else {
+				line = testLine;
+			}
+		}
+		// Draw the last line if it fits
+		if (currentY + lineHeight <= y + maxHeight) {
+			this.ctx.fillText(line.trim(), x, currentY);
+		}
+
+		this.ctx.restore();
+	}
+
 	drawShape(
 		shape,
 		parentX = 0,
@@ -1075,13 +1128,7 @@ class CanvasManipulator {
 				break;
 			case "circle":
 				this.ctx.beginPath();
-				this.ctx.arc(
-					x + shape.radius,
-					y + shape.radius,
-					shape.radius,
-					0,
-					Math.PI * 2
-				);
+				this.ctx.arc(x + width / 2, y + height / 2, width / 2, 0, Math.PI * 2); // Center circle in bounds
 				this.ctx.fill();
 				this.ctx.stroke();
 				break;
@@ -1095,19 +1142,32 @@ class CanvasManipulator {
 				break;
 			case "triangle":
 				this.ctx.beginPath();
-				this.ctx.moveTo(shape.points[0].x + x, shape.points[0].y + y);
-				this.ctx.lineTo(shape.points[1].x + x, shape.points[1].y + y);
-				this.ctx.lineTo(shape.points[2].x + x, shape.points[2].y + y);
+				this.ctx.moveTo(x + width / 2, y); // Top center
+				this.ctx.lineTo(x + width, y + height); // Bottom right
+				this.ctx.lineTo(x, y + height); // Bottom left
 				this.ctx.closePath();
 				this.ctx.fill();
 				this.ctx.stroke();
 				break;
 			case "text":
-				this.ctx.fillStyle = shape.styles.color;
-				this.ctx.font = `${shape.styles.fontSize} ${shape.styles.fontFamily}`;
-				this.ctx.textAlign = shape.styles.textAlign;
-				this.ctx.fillText(shape.text, x, y + parseFloat(shape.styles.fontSize));
+				this.ctx.fillStyle = shape.styles.color || "#000000";
+				this.ctx.font = `${shape.styles.fontSize || "16px"} ${
+					shape.styles.fontFamily || "Arial"
+				}`;
+				this.ctx.textAlign = shape.styles.textAlign || "left";
+				this.wrapText(
+					shape.text || "Double click to edit",
+					x,
+					y,
+					width,
+					height
+				);
+				this.ctx.strokeStyle =
+					this.editingShape === shape ? "#00FF00" : "#000000";
 				this.ctx.strokeRect(x, y, width, height);
+				if (this.editingShape === shape) {
+					this.drawCursor(shape, x, y, width, height);
+				}
 				break;
 			case "group":
 				shape.children.forEach((child) =>
@@ -1117,10 +1177,18 @@ class CanvasManipulator {
 				break;
 			case "input":
 				this.ctx.fillRect(x, y, width, height);
+				this.ctx.strokeStyle =
+					this.editingShape === shape ? "#00FF00" : "#000000";
 				this.ctx.strokeRect(x, y, width, height);
-				this.ctx.fillStyle = shape.styles.color;
-				this.ctx.font = `${shape.styles.fontSize} ${shape.styles.fontFamily}`;
-				this.ctx.fillText(shape.text || "Input", x + 5, y + height / 2 + 5);
+				this.ctx.fillStyle = shape.styles.color || "#000000";
+				this.ctx.font = `${shape.styles.fontSize || "16px"} ${
+					shape.styles.fontFamily || "Arial"
+				}`;
+				this.ctx.textAlign = shape.styles.textAlign || "left";
+				this.wrapText(shape.text || "Input", x + 5, y, width - 10, height);
+				if (this.editingShape === shape) {
+					this.drawCursor(shape, x + 5, y, width - 10, height);
+				}
 				break;
 			case "checkbox":
 				this.ctx.fillRect(x, y, width, height);
@@ -1193,16 +1261,37 @@ class CanvasManipulator {
 				this.ctx.fillRect(x, y, width, height);
 				this.ctx.strokeRect(x, y, width, height);
 				if (shape.src) {
-					const img = new Image();
-					img.src = shape.src;
-					img.onload = () => this.ctx.drawImage(img, x, y, width, height);
-					this.ctx.drawImage(img, x, y, width, height);
+					const cached = this.mediaCache.get(shape.id);
+					if (cached && cached.src === shape.src) {
+						this.ctx.drawImage(cached.element, x, y, width, height);
+					} else {
+						const img = new Image();
+						img.src = shape.src;
+						img.onload = () => {
+							this.mediaCache.set(shape.id, { src: shape.src, element: img });
+							this.ctx.drawImage(img, x, y, width, height);
+							this.redraw(); // Ensure redraw after load
+						};
+					}
 				}
 				break;
 			case "video":
 				this.ctx.fillRect(x, y, width, height);
 				this.ctx.strokeRect(x, y, width, height);
 				if (shape.src) {
+					const cached = this.mediaCache.get(shape.id);
+					if (cached && cached.src === shape.src) {
+						this.ctx.drawImage(cached.element, x, y, width, height);
+					} else {
+						const video = document.createElement("video");
+						video.src = shape.src;
+						video.onloadeddata = () => {
+							this.mediaCache.set(shape.id, { src: shape.src, element: video });
+							this.ctx.drawImage(video, x, y, width, height);
+							this.redraw(); // Ensure redraw after load
+						};
+					}
+				} else {
 					this.ctx.fillStyle = shape.styles.color;
 					this.ctx.font = `${shape.styles.fontSize} ${shape.styles.fontFamily}`;
 					this.ctx.textAlign = "center";
@@ -1314,7 +1403,6 @@ class CanvasManipulator {
 							case "Z":
 								this.ctx.closePath();
 								break;
-							// Add more path commands (Q, C, etc.) as needed
 						}
 					});
 					this.ctx.fill();
@@ -1325,7 +1413,91 @@ class CanvasManipulator {
 		this.ctx.restore();
 	}
 
-	// Apply styles including gradients and patterns
+	drawCursor(shape, x, y, maxWidth, maxHeight) {
+		const text = shape.text || "";
+		const lineHeight =
+			parseFloat(this.ctx.font.match(/\d+px/)?.[0] || "16px") * 1.2;
+		this.ctx.save();
+		this.ctx.beginPath();
+		this.ctx.rect(x, y, maxWidth, maxHeight);
+		this.ctx.clip();
+		this.ctx.textBaseline = "top";
+
+		// Split text into lines, respecting both newlines and word wrapping
+		const rawLines = text.split("\n");
+		const lines = [];
+		let charCount = 0;
+
+		for (const rawLine of rawLines) {
+			let lineText = rawLine;
+			let words = lineText.split(" ");
+			let currentLine = "";
+
+			for (const word of words) {
+				const testLine = currentLine + (currentLine ? " " : "") + word;
+				const testWidth = this.ctx.measureText(testLine).width;
+				if (testWidth <= maxWidth) {
+					currentLine = testLine;
+				} else {
+					if (currentLine) {
+						lines.push(currentLine);
+						charCount += currentLine.length + 1; // +1 for space/newline
+					}
+					currentLine = word;
+				}
+			}
+			if (currentLine) {
+				lines.push(currentLine);
+				charCount += currentLine.length + 1; // +1 for newline
+			}
+		}
+		charCount--; // Remove extra +1 from last line
+
+		// Find the line and position for the cursor
+		let currentY = y;
+		let cursorX = x;
+
+		charCount = 0;
+		for (let i = 0; i < lines.length; i++) {
+			const line = lines[i];
+			const lineEnd = charCount + line.length;
+
+			if (this.cursorPos <= lineEnd) {
+				// Cursor is on this line
+				const textBeforeCursor = text.slice(charCount, this.cursorPos);
+				cursorX = x + this.ctx.measureText(textBeforeCursor).width;
+				break;
+			}
+
+			charCount = lineEnd + 1; // +1 for newline or space
+			currentY += lineHeight;
+		}
+
+		// If cursor is at the end of text, ensure it follows the last character
+		if (this.cursorPos === text.length && lines.length > 0) {
+			const lastLine = lines[lines.length - 1];
+			cursorX = x + this.ctx.measureText(lastLine).width;
+			currentY = y + (lines.length - 1) * lineHeight;
+		}
+
+		// Keep cursor within vertical bounds
+		if (currentY + lineHeight > y + maxHeight) {
+			currentY = y + maxHeight - lineHeight;
+		}
+
+		// Blink cursor
+		const blink = Math.floor(Date.now() / 500) % 2 === 0;
+		if (blink) {
+			this.ctx.strokeStyle = "#000000";
+			this.ctx.lineWidth = 1;
+			this.ctx.beginPath();
+			this.ctx.moveTo(cursorX, currentY);
+			this.ctx.lineTo(cursorX, currentY + lineHeight - 2);
+			this.ctx.stroke();
+		}
+		this.ctx.restore();
+	}
+
 	applyStyles(styles, x, y, width, height) {
 		if (styles.backgroundColor.startsWith("linear-gradient")) {
 			const gradient = this.ctx.createLinearGradient(x, y, x + width, y);
@@ -1357,7 +1529,6 @@ class CanvasManipulator {
 		this.ctx.shadowOffsetY = parseFloat(styles.boxShadow.split(" ")[1]) || 0;
 	}
 
-	// Draw selection overlay with handles
 	drawSelection(shape) {
 		const width = this.calculateDimension(
 			shape.width,
@@ -1405,7 +1576,6 @@ class CanvasManipulator {
 		this.ctx.restore();
 	}
 
-	// Get cursor style for resize handles
 	getCursorForHandle(handle) {
 		switch (handle) {
 			case "se":
@@ -1431,25 +1601,21 @@ class CanvasManipulator {
 		}
 	}
 
-	// Toggle selection overlay
 	setOverlay(show) {
 		this.showOverlay = show;
 		this.redraw();
 	}
 
-	// Set grid size
 	setGridSize(size) {
 		this.gridSize = size;
 		this.redraw();
 	}
 
-	// Toggle snap-to-grid
 	toggleSnapToGrid() {
 		this.snapToGrid = !this.snapToGrid;
 		this.redraw();
 	}
 
-	// Layers Management
 	toggleLayerVisibility(id) {
 		this.layersVisible.set(id, !this.isLayerVisible(id));
 		this.redraw();
@@ -1479,7 +1645,6 @@ class CanvasManipulator {
 		}));
 	}
 
-	// Multi-Select Operations
 	alignSelected(alignment) {
 		if (this.selectedShapes.length < 1) return;
 		const parent = this.getCommonParent(this.selectedShapes);
@@ -1599,7 +1764,6 @@ class CanvasManipulator {
 		this.redraw();
 	}
 
-	// Templates
 	saveTemplate(name) {
 		this.templates.set(name, this.getElementsAsJson());
 	}
@@ -1611,7 +1775,6 @@ class CanvasManipulator {
 		}
 	}
 
-	// Components
 	createComponent(name, shape) {
 		const component = { ...shape, id: `comp_${Date.now()}` };
 		this.components.set(name, component);
@@ -1649,7 +1812,6 @@ class CanvasManipulator {
 		this.redraw();
 	}
 
-	// Guides
 	addGuide(type, position) {
 		this.guides.push({
 			type,
@@ -1664,7 +1826,6 @@ class CanvasManipulator {
 		this.redraw();
 	}
 
-	// Collision Detection
 	detectCollisions() {
 		const collisions = [];
 		for (let i = 0; i < this.shapes.length; i++) {
@@ -1709,7 +1870,6 @@ class CanvasManipulator {
 		);
 	}
 
-	// Event System
 	addEvent(id, eventType, action) {
 		const shape = this.getElementById(id);
 		if (shape) {
@@ -1719,7 +1879,6 @@ class CanvasManipulator {
 		}
 	}
 
-	// Zoom and Pan
 	setZoom(scale) {
 		this.scale = scale;
 		this.redraw();
@@ -1731,7 +1890,6 @@ class CanvasManipulator {
 		this.redraw();
 	}
 
-	// Initialize event listeners
 	initEventListeners() {
 		this.canvas.addEventListener("mousedown", this.handleMouseDown.bind(this));
 		this.canvas.addEventListener("mousemove", this.handleMouseMove.bind(this));
@@ -1743,9 +1901,13 @@ class CanvasManipulator {
 		this.canvas.addEventListener("drop", this.handleDrop.bind(this));
 		this.canvas.addEventListener("keydown", this.handleKeyDown.bind(this));
 		this.canvas.addEventListener("wheel", this.handleScroll.bind(this));
+		// Spacebar listeners (ensure these are present)
+		// window.addEventListener("keydown", this.handleSpaceDown.bind(this));
+		// window.addEventListener("keyup", this.handleSpaceUp.bind(this));
 	}
 
 	handleMouseDown(e) {
+		if (this.isSpacePanning) return;
 		const { x, y } = this.getMousePos(e);
 		this.startX = x;
 		this.startY = y;
@@ -1760,7 +1922,6 @@ class CanvasManipulator {
 			this.isResizing = true;
 			this.selectedShapes = [shape];
 		} else if (e.button === 1) {
-			// Middle click for panning
 			this.isPanning = true;
 		} else if (shape) {
 			this.isDragging = true;
@@ -1769,6 +1930,11 @@ class CanvasManipulator {
 					this.selectedShapes.push(shape);
 			} else {
 				this.selectedShapes = [shape];
+			}
+
+			// Exit editing mode if selecting a different shape
+			if (this.editingShape && this.editingShape !== shape) {
+				this.editingShape = null;
 			}
 
 			if (shape.type === "checkbox") {
@@ -1782,7 +1948,7 @@ class CanvasManipulator {
 				this.state.addState([...this.shapes], "Change Selector Option");
 				this.redraw();
 			} else if (shape.events?.onClick) {
-				eval(shape.events.onClick); // Execute click event (unsafe, consider safer alternatives)
+				eval(shape.events.onClick);
 				this.redraw();
 			}
 		} else if (this.currentShape) {
@@ -1807,9 +1973,16 @@ class CanvasManipulator {
 			createShapePromise.then((newShape) => {
 				const parent = this.findContainerAtPoint(x, y);
 				this.addShape(newShape, parent?.id);
+				if (this.currentShape === "path") {
+					this.pathPoints = [{ x: 0, y: 0 }];
+				}
 			});
 		} else {
 			this.selectedShapes = [];
+			// Exit editing mode if clicking outside any shape
+			if (this.editingShape) {
+				this.editingShape = null;
+			}
 		}
 		this.redraw();
 	}
@@ -1817,7 +1990,6 @@ class CanvasManipulator {
 	handleMouseMove(e) {
 		const { x, y } = this.getMousePos(e);
 
-		// Update hover handle and cursor
 		const shape = this.selectedShapes[0];
 		if (shape) {
 			this.hoverHandle = this.getResizeHandle(x, y, shape);
@@ -1827,7 +1999,6 @@ class CanvasManipulator {
 			this.redraw();
 		}
 
-		// Handle rotation
 		if (this.isRotating && shape) {
 			const centerX =
 				shape.x +
@@ -1848,15 +2019,11 @@ class CanvasManipulator {
 			const angle = (Math.atan2(y - centerY, x - centerX) * 180) / Math.PI;
 			shape.styles.transform = `rotate(${angle + 90}deg)`;
 			this.redraw();
-		}
-		// Handle resizing
-		else if (this.isResizing && shape) {
+		} else if (this.isResizing && shape) {
 			this.resizeShape(shape, x, y, this.resizeHandle);
 			this.restrictWithinParent(shape);
 			this.redraw();
-		}
-		// Handle dragging
-		else if (this.isDragging && this.selectedShapes.length) {
+		} else if (this.isDragging && this.selectedShapes.length) {
 			const dx = x - this.startX;
 			const dy = y - this.startY;
 			this.selectedShapes.forEach((shape) => {
@@ -1867,28 +2034,29 @@ class CanvasManipulator {
 					shape.y = Math.round(shape.y / this.gridSize) * this.gridSize;
 				}
 				this.restrictWithinParent(shape);
-				// Smart guides: Suggest spacing
 				this.showSmartGuides(shape);
 			});
 			this.startX = x;
 			this.startY = y;
 			this.redraw();
-		}
-		// Handle drawing
-		else if (this.isDrawing && this.currentShape) {
+		} else if (this.isDrawing && this.currentShape) {
 			const shape =
 				this.shapes[this.shapes.length - 1] || this.selectedShapes[0];
 			if (this.currentShape === "path") {
-				this.pathPoints.push({ x: x - shape.x, y: y - shape.y });
-				shape.pathData = this.generatePathData();
+				if (this.pathPoints.length) {
+					this.pathPoints[this.pathPoints.length - 1] = {
+						x: x - shape.x,
+						y: y - shape.y,
+					};
+					shape.pathData = this.generatePathData();
+				}
 			} else {
 				this.updateShapeDimensions(shape, x, y);
 			}
 			this.restrictWithinParent(shape);
 			this.redraw();
-		}
-		// Handle panning
-		else if (this.isPanning) {
+		} else if (this.isPanning) {
+			// Middle mouse panning remains
 			this.panX += x - this.startX;
 			this.panY += y - this.startY;
 			this.startX = x;
@@ -1910,9 +2078,6 @@ class CanvasManipulator {
 					this.nestElement(target.id, shape.id)
 				);
 			}
-		}
-		if (this.isDrawing && this.currentShape === "path") {
-			this.pathPoints = [];
 		}
 		if (
 			this.isDrawing ||
@@ -1937,62 +2102,9 @@ class CanvasManipulator {
 	handleDoubleClick(e) {
 		const { x, y } = this.getMousePos(e);
 		const shape = this.findShapeAtPoint(x, y);
-		if (shape && shape.type === "text") {
-			this.startTextEditing(shape);
+		if (shape && (shape.type === "text" || shape.type === "input")) {
+			this.startDirectTextEditing(shape);
 		}
-	}
-
-	startTextEditing(shape) {
-		const parent = this.getParent(shape);
-		const parentWidth = parent
-			? this.calculateDimension(
-					parent.width,
-					this.canvas.width,
-					this.canvas.height
-			  )
-			: this.canvas.width;
-		const parentHeight = parent
-			? this.calculateDimension(
-					parent.height,
-					this.canvas.height,
-					this.canvas.height
-			  )
-			: this.canvas.height;
-		const width = this.calculateDimension(
-			shape.width,
-			parentWidth,
-			parentHeight
-		);
-		const height = this.calculateDimension(
-			shape.height,
-			parentWidth,
-			parentHeight
-		);
-		const input = document.createElement("input");
-		input.type = "text";
-		input.value = shape.text || "";
-		input.style.position = "absolute";
-		input.style.left = `${this.canvas.offsetLeft + shape.x}px`;
-		input.style.top = `${this.canvas.offsetTop + shape.y}px`;
-		input.style.width = `${width}px`;
-		input.style.height = `${height}px`;
-		input.style.fontSize = shape.styles.fontSize;
-		input.style.fontFamily = shape.styles.fontFamily;
-		input.style.color = shape.styles.color;
-		document.body.appendChild(input);
-		input.focus();
-
-		const finishEditing = () => {
-			shape.text = input.value;
-			document.body.removeChild(input);
-			this.state.addState([...this.shapes], "Edit Text");
-			this.redraw();
-		};
-
-		input.addEventListener("blur", finishEditing);
-		input.addEventListener("keydown", (e) => {
-			if (e.key === "Enter") finishEditing();
-		});
 	}
 
 	handleZoom(e) {
@@ -2000,7 +2112,7 @@ class CanvasManipulator {
 		e.preventDefault();
 		const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
 		this.scale *= zoomFactor;
-		this.scale = Math.max(0.1, Math.min(this.scale, 5)); // Limit zoom
+		this.scale = Math.max(0.1, Math.min(this.scale, 5));
 		this.redraw();
 	}
 
@@ -2042,7 +2154,42 @@ class CanvasManipulator {
 		const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 		const ctrlKey = isMac ? e.metaKey : e.ctrlKey;
 
-		if (ctrlKey && e.key === "z") {
+		if (this.editingShape) {
+			const shape = this.editingShape;
+			let text = shape.text || "";
+			e.preventDefault();
+
+			if (e.key.length === 1) {
+				text =
+					text.slice(0, this.cursorPos) + e.key + text.slice(this.cursorPos);
+				this.cursorPos++;
+			} else if (e.key === "Backspace") {
+				if (this.cursorPos > 0) {
+					text = text.slice(0, this.cursorPos - 1) + text.slice(this.cursorPos);
+					this.cursorPos--;
+				}
+			} else if (e.key === "Delete") {
+				if (this.cursorPos < text.length) {
+					text = text.slice(0, this.cursorPos) + text.slice(this.cursorPos + 1);
+				}
+			} else if (e.key === "ArrowLeft") {
+				this.cursorPos = Math.max(0, this.cursorPos - 1);
+			} else if (e.key === "ArrowRight") {
+				this.cursorPos = Math.min(text.length, this.cursorPos + 1);
+			} else if (e.key === "Enter") {
+				text =
+					text.slice(0, this.cursorPos) + "\n" + text.slice(this.cursorPos);
+				this.cursorPos++;
+			} else if (e.key === "Escape") {
+				this.editingShape = null;
+				this.redraw();
+				return;
+			}
+
+			shape.text = text;
+			this.state.addState([...this.shapes], "Edit Text");
+			this.redraw();
+		} else if (ctrlKey && e.key === "z") {
 			e.preventDefault();
 			this.undo();
 		} else if (ctrlKey && e.key === "y") {
@@ -2054,6 +2201,34 @@ class CanvasManipulator {
 		} else if (ctrlKey && e.key === "v") {
 			e.preventDefault();
 			this.pasteClipboard();
+		}
+	}
+
+	handleSpaceDown(e) {
+		if (
+			e.code === "Space" &&
+			!this.isSpacePanning &&
+			!this.isDrawing &&
+			!this.isDragging &&
+			!this.isResizing &&
+			!this.isRotating
+		) {
+			e.preventDefault();
+			e.stopPropagation(); // Stop event from bubbling up
+			this.isSpacePanning = true;
+			this.canvas.style.cursor = "grab";
+			this.startX = e.clientX;
+			this.startY = e.clientY;
+		}
+	}
+
+	handleSpaceUp(e) {
+		if (e.code === "Space" && this.isSpacePanning) {
+			e.preventDefault();
+			e.stopPropagation();
+			this.isSpacePanning = false;
+			this.canvas.style.cursor = "default";
+			this.redraw();
 		}
 	}
 
@@ -2313,17 +2488,18 @@ class CanvasManipulator {
 					this.canvas.height
 			  )
 			: this.canvas.height;
-		const currentWidth = this.calculateDimension(
+		let currentWidth = this.calculateDimension(
 			shape.width,
 			parentWidth,
 			parentHeight
 		);
-		const currentHeight = this.calculateDimension(
+		let currentHeight = this.calculateDimension(
 			shape.height,
 			parentWidth,
 			parentHeight
 		);
 
+		// Adjust position and size based on handle
 		switch (handle) {
 			case "se":
 				shape.width = `${x - shape.x}px`;
@@ -2331,8 +2507,8 @@ class CanvasManipulator {
 				break;
 			case "sw":
 				shape.width = `${shape.x + currentWidth - x}px`;
-				shape.x = x;
 				shape.height = `${y - shape.y}px`;
+				shape.x = x;
 				break;
 			case "ne":
 				shape.width = `${x - shape.x}px`;
@@ -2360,18 +2536,18 @@ class CanvasManipulator {
 				shape.x = x;
 				break;
 		}
-		// Ensure minimum dimensions
+
+		// Ensure minimum size
 		shape.width = `${Math.max(
-			parseFloat(shape.width) || 0,
-			parseFloat(shape.styles.minWidth)
+			10,
+			this.calculateDimension(shape.width, parentWidth, parentHeight)
 		)}px`;
 		shape.height = `${Math.max(
-			parseFloat(shape.height) || 0,
-			parseFloat(shape.styles.minHeight)
+			10,
+			this.calculateDimension(shape.height, parentWidth, parentHeight)
 		)}px`;
 	}
 
-	// Restrict shape within its parent's bounds
 	restrictWithinParent(shape, parent = null) {
 		if (!parent) parent = this.getParent(shape);
 		if (!parent) return;
@@ -2401,24 +2577,281 @@ class CanvasManipulator {
 		shape.y = Math.max(0, Math.min(shape.y, parentHeight - height));
 	}
 
-	// Get the parent of a shape
 	getParent(shape) {
-		return this.findParent(this.shapes, shape.id);
+		for (const parent of this.shapes) {
+			if (parent.children && parent.children.includes(shape)) return parent;
+			const nested = this.findNestedParent(shape, parent.children);
+			if (nested) return nested;
+		}
+		return null;
 	}
 
-	// Recursively find the parent of a shape by ID
-	findParent(shapes, id) {
-		for (const shape of shapes) {
-			if (shape.children) {
-				if (shape.children.some((child) => child.id === id)) return shape;
-				const found = this.findParent(shape.children, id);
-				if (found) return found;
+	findNestedParent(shape, children) {
+		if (!children) return null;
+		for (const child of children) {
+			if (child === shape) return child;
+			if (child.children) {
+				const found = this.findNestedParent(shape, child.children);
+				if (found) return child;
 			}
 		}
 		return null;
 	}
 
-	// Find a shape recursively by ID
+	getCommonParent(shapes) {
+		if (shapes.length <= 1) return this.getParent(shapes[0]);
+		const parents = shapes.map((s) => this.getParent(s));
+		return parents.every((p) => p === parents[0]) ? parents[0] : null;
+	}
+
+	showSmartGuides(shape) {
+		const SNAP_THRESHOLD = 5; // Distance in pixels within which snapping occurs
+		const GUIDE_COLOR = "rgba(255, 0, 0, 0.5)"; // Red with transparency for guides
+		const parent = this.getParent(shape);
+		const parentWidth = parent
+			? this.calculateDimension(
+					parent.width,
+					this.canvas.width,
+					this.canvas.height
+			  )
+			: this.canvas.width;
+		const parentHeight = parent
+			? this.calculateDimension(
+					parent.height,
+					this.canvas.height,
+					this.canvas.height
+			  )
+			: this.canvas.height;
+		const shapeWidth = this.calculateDimension(
+			shape.width,
+			parentWidth,
+			parentHeight
+		);
+		const shapeHeight = this.calculateDimension(
+			shape.height,
+			parentWidth,
+			parentHeight
+		);
+
+		// Define edges of the current shape
+		const shapeEdges = {
+			left: shape.x,
+			right: shape.x + shapeWidth,
+			top: shape.y,
+			bottom: shape.y + shapeHeight,
+			centerX: shape.x + shapeWidth / 2,
+			centerY: shape.y + shapeHeight / 2,
+		};
+
+		// Temporary guides to draw
+		const guides = [];
+		const snapAdjustments = { x: 0, y: 0 };
+
+		// Compare with all other shapes except the current one
+		this.shapes.forEach((other) => {
+			if (other === shape || !this.isLayerVisible(other.id)) return;
+
+			const otherWidth = this.calculateDimension(
+				other.width,
+				parentWidth,
+				parentHeight
+			);
+			const otherHeight = this.calculateDimension(
+				other.height,
+				parentWidth,
+				parentHeight
+			);
+			const otherEdges = {
+				left: other.x,
+				right: other.x + otherWidth,
+				top: other.y,
+				bottom: other.y + otherHeight,
+				centerX: other.x + otherWidth / 2,
+				centerY: other.y + otherHeight / 2,
+			};
+
+			// Horizontal alignments
+			const horizontalChecks = [
+				{
+					edge: shapeEdges.top,
+					otherEdge: otherEdges.top,
+					type: "horizontal",
+					pos: "top",
+				},
+				{
+					edge: shapeEdges.bottom,
+					otherEdge: otherEdges.bottom,
+					type: "horizontal",
+					pos: "bottom",
+				},
+				{
+					edge: shapeEdges.centerY,
+					otherEdge: otherEdges.centerY,
+					type: "horizontal",
+					pos: "centerY",
+				},
+				{
+					edge: shapeEdges.top,
+					otherEdge: otherEdges.bottom,
+					type: "horizontal",
+					pos: "top-to-bottom",
+				},
+				{
+					edge: shapeEdges.bottom,
+					otherEdge: otherEdges.top,
+					type: "horizontal",
+					pos: "bottom-to-top",
+				},
+			];
+
+			// Vertical alignments
+			const verticalChecks = [
+				{
+					edge: shapeEdges.left,
+					otherEdge: otherEdges.left,
+					type: "vertical",
+					pos: "left",
+				},
+				{
+					edge: shapeEdges.right,
+					otherEdge: otherEdges.right,
+					type: "vertical",
+					pos: "right",
+				},
+				{
+					edge: shapeEdges.centerX,
+					otherEdge: otherEdges.centerX,
+					type: "vertical",
+					pos: "centerX",
+				},
+				{
+					edge: shapeEdges.left,
+					otherEdge: otherEdges.right,
+					type: "vertical",
+					pos: "left-to-right",
+				},
+				{
+					edge: shapeEdges.right,
+					otherEdge: otherEdges.left,
+					type: "vertical",
+					pos: "right-to-left",
+				},
+			];
+
+			// Check each alignment
+			horizontalChecks.forEach((check) => {
+				const diff = Math.abs(check.edge - check.otherEdge);
+				if (diff <= SNAP_THRESHOLD) {
+					guides.push({
+						type: check.type,
+						y: check.otherEdge,
+						x1: Math.min(shapeEdges.left, otherEdges.left) - 5,
+						x2: Math.max(shapeEdges.right, otherEdges.right) + 5,
+					});
+					snapAdjustments.y = check.otherEdge - check.edge;
+				}
+			});
+
+			verticalChecks.forEach((check) => {
+				const diff = Math.abs(check.edge - check.otherEdge);
+				if (diff <= SNAP_THRESHOLD) {
+					guides.push({
+						type: check.type,
+						x: check.otherEdge,
+						y1: Math.min(shapeEdges.top, otherEdges.top) - 5,
+						y2: Math.max(shapeEdges.bottom, otherEdges.bottom) + 5,
+					});
+					snapAdjustments.x = check.otherEdge - check.edge;
+				}
+			});
+		});
+
+		// Apply snapping if within threshold
+		if (this.snapToGrid || Math.abs(snapAdjustments.x) <= SNAP_THRESHOLD) {
+			shape.x += snapAdjustments.x;
+		}
+		if (this.snapToGrid || Math.abs(snapAdjustments.y) <= SNAP_THRESHOLD) {
+			shape.y += snapAdjustments.y;
+		}
+
+		// Draw guides
+		this.ctx.save();
+		this.ctx.strokeStyle = GUIDE_COLOR;
+		this.ctx.lineWidth = 1 / this.scale;
+		guides.forEach((guide) => {
+			this.ctx.beginPath();
+			if (guide.type === "horizontal") {
+				this.ctx.moveTo(guide.x1, guide.y);
+				this.ctx.lineTo(guide.x2, guide.y);
+			} else {
+				this.ctx.moveTo(guide.x, guide.y1);
+				this.ctx.lineTo(guide.x, guide.y2);
+			}
+			this.ctx.stroke();
+		});
+		this.ctx.restore();
+	}
+
+	createShape(type, x, y) {
+		const id = `shape_${Date.now()}`;
+		const defaults = this.getAcceptedTypes().find((t) => t.type === type) || {};
+		return {
+			id,
+			type,
+			x,
+			y,
+			width: defaults.width || "50px",
+			height: defaults.height || "50px",
+			styles: { ...AdvancedStyles },
+			...(type === "circle" && { radius: 25 }),
+			...(type === "line" && { x2: x, y2: y }),
+			...(type === "triangle" && { points: defaults.points }),
+			...(type === "text" && { text: "Double click to edit" }),
+			children: [],
+			frames: [],
+			events: {},
+		};
+	}
+
+	updateShapeDimensions(shape, x, y) {
+		const parent = this.getParent(shape);
+		const parentWidth = parent
+			? this.calculateDimension(
+					parent.width,
+					this.canvas.width,
+					this.canvas.height
+			  )
+			: this.canvas.width;
+		const parentHeight = parent
+			? this.calculateDimension(
+					parent.height,
+					this.canvas.height,
+					this.canvas.height
+			  )
+			: this.canvas.height;
+
+		if (shape.type === "line") {
+			shape.x2 = x;
+			shape.y2 = y;
+		} else if (shape.type === "path") {
+			// Path updates handled separately in mouse events
+		} else {
+			const width = x - shape.x;
+			const height = y - shape.y;
+			shape.width = `${Math.max(10, width)}px`;
+			shape.height = `${Math.max(10, height)}px`;
+		}
+	}
+
+	generatePathData() {
+		if (!this.pathPoints.length) return "";
+		let pathData = `M${this.pathPoints[0].x},${this.pathPoints[0].y}`;
+		for (let i = 1; i < this.pathPoints.length; i++) {
+			pathData += ` L${this.pathPoints[i].x},${this.pathPoints[i].y}`;
+		}
+		return pathData;
+	}
+
 	findNestedShape(id, shapes) {
 		for (const shape of shapes) {
 			if (shape.id === id) return shape;
@@ -2429,118 +2862,4 @@ class CanvasManipulator {
 		}
 		return null;
 	}
-
-	// Get the common parent of multiple shapes
-	getCommonParent(shapes) {
-		if (!shapes.length) return null;
-		const parents = shapes.map((shape) => this.getParent(shape));
-		if (parents.every((p) => p === null)) return null;
-		const uniqueParents = [...new Set(parents.filter((p) => p))];
-		return uniqueParents.length === 1 ? uniqueParents[0] : null;
-	}
-
-	// Update shape dimensions during drawing
-	updateShapeDimensions(shape, x, y) {
-		if (!shape) return;
-		shape.width = `${Math.abs(x - shape.x)}px`;
-		shape.height = `${Math.abs(y - shape.y)}px`;
-		if (x < shape.x) shape.x = x;
-		if (y < shape.y) shape.y = y;
-	}
-
-	// Generate path data from points (for path drawing)
-	generatePathData() {
-		if (!this.pathPoints.length) return "";
-		let pathData = `M${this.pathPoints[0].x},${this.pathPoints[0].y}`;
-		for (let i = 1; i < this.pathPoints.length; i++) {
-			pathData += ` L${this.pathPoints[i].x},${this.pathPoints[i].y}`;
-		}
-		return pathData;
-	}
-
-	// Show smart guides for spacing feedback
-	showSmartGuides(shape) {
-		this.ctx.save();
-		this.ctx.strokeStyle = "#ff00ff";
-		this.ctx.lineWidth = 1 / this.scale;
-		this.shapes.forEach((other) => {
-			if (other !== shape && !this.selectedShapes.includes(other)) {
-				const parent = this.getParent(shape) || { x: 0, y: 0 };
-				const shapeX = shape.x + parent.x;
-				const shapeY = shape.y + parent.y;
-				const otherX = other.x + (this.getParent(other)?.x || 0);
-				const otherY = other.y + (this.getParent(other)?.y || 0);
-				const shapeWidth = this.calculateDimension(
-					shape.width,
-					this.canvas.width,
-					this.canvas.height
-				);
-				const shapeHeight = this.calculateDimension(
-					shape.height,
-					this.canvas.height,
-					this.canvas.height
-				);
-				const otherWidth = this.calculateDimension(
-					other.width,
-					this.canvas.width,
-					this.canvas.height
-				);
-				const otherHeight = this.calculateDimension(
-					other.height,
-					this.canvas.height,
-					this.canvas.height
-				);
-
-				// Horizontal spacing
-				if (Math.abs(shapeY - otherY) < 5) {
-					this.ctx.beginPath();
-					this.ctx.moveTo(shapeX + shapeWidth, shapeY);
-					this.ctx.lineTo(otherX, otherY);
-					this.ctx.stroke();
-				}
-				// Vertical spacing
-				if (Math.abs(shapeX - otherX) < 5) {
-					this.ctx.beginPath();
-					this.ctx.moveTo(shapeX, shapeY + shapeHeight);
-					this.ctx.lineTo(otherX, otherY);
-					this.ctx.stroke();
-				}
-			}
-		});
-		this.ctx.restore();
-	}
-
-	// Create a basic shape object
-	createShape(type, x, y) {
-		const defaults = this.getAcceptedTypes().find((t) => t.type === type) || {};
-		return {
-			id: `shape_${Date.now()}`,
-			type,
-			x,
-			y,
-			width: defaults.width || "50px",
-			height: defaults.height || "50px",
-			styles: { ...AdvancedStyles },
-			children: [],
-			frames: [],
-			events: {},
-			...(type === "text" && { text: "Double click to edit" }),
-			...(type === "circle" && { radius: 25 }),
-			...(type === "line" && { x2: x, y2: y }),
-			...(type === "triangle" && {
-				points: [
-					{ x: 0, y: 0 },
-					{ x: 50, y: 0 },
-					{ x: 25, y: -50 },
-				],
-			}),
-		};
-	}
-}
-
-// Export the class for use
-if (typeof module !== "undefined" && module.exports) {
-	module.exports = CanvasManipulator;
-} else {
-	window.CanvasManipulator = CanvasManipulator;
 }
